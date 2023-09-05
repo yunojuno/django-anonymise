@@ -14,7 +14,8 @@ INSTALLED_APPS = (
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "my_app",
+    "anonymise",
+    "demo",
 )
 
 MIDDLEWARE = [
@@ -72,3 +73,6 @@ ROOT_URLCONF = "demo.urls"
 
 if not DEBUG:
     raise Exception("This settings file can only be used with DEBUG=True")
+
+
+AUTH_USER_MODEL = "demo.User"
