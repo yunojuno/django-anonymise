@@ -97,10 +97,11 @@ class AnonymisableModel(models.Model):
         """Anonymise a single field."""
         logger.debug("Anonymising %s.%s.%s", self._meta.label, self.pk, field.name)
         func_name = self.ANONYMISE_FIELD_PATTERN.format(field_name=field.name)
-        if not getattr(self, func_name):
+        if not (_anonymise_field := getattr(self, func_name, None)):
             raise NotImplementedError(f"{func_name} not implemented")
         old_value = getattr(self, field.name)
-        new_value = getattr(self, func_name)()
+        _anonymise_field()
+        new_value = getattr(self, field.name)
         return old_value, new_value
 
     def anonymise_fields(self, *fields: models.Field) -> dict[str, AnonymisationResult]:

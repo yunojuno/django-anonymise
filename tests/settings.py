@@ -13,7 +13,8 @@ INSTALLED_APPS = (
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "my_app",
+    "anonymise",
+    "tests",
 )
 
 MIDDLEWARE = [
@@ -69,5 +70,10 @@ LOGGING = {
 
 ROOT_URLCONF = "tests.urls"
 
+# silence warning models.W042
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
 if not DEBUG:
     raise Exception("This settings file can only be used with DEBUG=True")
+
+AUTH_USER_MODEL = "tests.User"
