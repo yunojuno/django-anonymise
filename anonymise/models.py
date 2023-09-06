@@ -5,6 +5,8 @@ from typing import Any, TypeAlias
 from django.apps import apps as django_apps
 from django.db import models
 
+# from django.utils.timezone import now as tz_now
+
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
 
@@ -21,6 +23,10 @@ class AnonymisableModel(models.Model):
 
     # used to format the expected anonymisation function name
     ANONYMISE_FIELD_PATTERN = "anonymise_{field_name}_field"
+
+    # anonymised_at = models.DateTimeField(
+    #     blank=True, null=True, verbose_name="Object anonymisation timestamp."
+    # )
 
     class Meta:
         abstract = True
@@ -106,3 +112,4 @@ class AnonymisableModel(models.Model):
         logger.debug("Anonymising %s.%s", self._meta.label, self.pk)
         updates = self.anonymise_fields(*self.get_anonymisable_fields())
         self.post_anonymise(**updates)
+        # self.anonymised_at = tz_now()
