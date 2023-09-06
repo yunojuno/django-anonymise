@@ -2,13 +2,113 @@ from unittest import mock
 
 import pytest
 
-from anonymise.models import AnonymisableModel, FieldSummaryTuple
+from anonymise.models import (
+    FieldSummaryTuple,
+    anonymisable_models,
+    model_fields_summary,
+)
 
 from .models import User
 
 
-def test_get_subclasses() -> None:
-    assert AnonymisableModel.get_subclasses() == [User]
+def test_anonymisable_models() -> None:
+    assert anonymisable_models() == [User]
+
+
+def test_model_fields_summary() -> None:
+    assert model_fields_summary(User) == [
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="id",
+            type="AutoField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="is_active",
+            type="BooleanField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="is_staff",
+            type="BooleanField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="is_superuser",
+            type="BooleanField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="first_name",
+            type="CharField",
+            is_anonymisable=True,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="last_name",
+            type="CharField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="password",
+            type="CharField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="username",
+            type="CharField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="date_joined",
+            type="DateTimeField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="last_login",
+            type="DateTimeField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="email",
+            type="EmailField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="groups",
+            type="ManyToManyField",
+            is_anonymisable=False,
+        ),
+        FieldSummaryTuple(
+            app="tests",
+            model="User",
+            field="user_permissions",
+            type="ManyToManyField",
+            is_anonymisable=False,
+        ),
+    ]
 
 
 @pytest.mark.django_db
@@ -50,98 +150,3 @@ class TestAnonymisableUserModel:
 
     def test_get_anonymisable_fields(self) -> None:
         assert User.get_anonymisable_fields() == [User._meta.get_field("first_name")]
-
-    def test_get_anonymisable_fields_summary(self) -> None:
-        assert User.get_anonymisable_fields_summary() == [
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="id",
-                type="AutoField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="is_active",
-                type="BooleanField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="is_staff",
-                type="BooleanField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="is_superuser",
-                type="BooleanField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="first_name",
-                type="CharField",
-                is_anonymisable=True,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="last_name",
-                type="CharField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="password",
-                type="CharField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="username",
-                type="CharField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="date_joined",
-                type="DateTimeField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="last_login",
-                type="DateTimeField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="email",
-                type="EmailField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="groups",
-                type="ManyToManyField",
-                is_anonymisable=False,
-            ),
-            FieldSummaryTuple(
-                app="tests",
-                model="User",
-                field="user_permissions",
-                type="ManyToManyField",
-                is_anonymisable=False,
-            ),
-        ]

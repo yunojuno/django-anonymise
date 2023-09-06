@@ -32,11 +32,8 @@ class AnonymisableModel(models.Model):
         abstract = True
 
     @classmethod
-    def get_subclasses(cls) -> list[type[models.Model]]:
-        return [m for m in django_apps.get_models() if issubclass(m, AnonymisableModel)]
-
-    @classmethod
     def is_field_anonymisable(cls, field: models.Field) -> bool:
+        """Return True if the field can be anonymised."""
         if isinstance(field, (models.AutoField, models.ForeignObjectRel)):
             return False
         func_name = cls.ANONYMISE_FIELD_PATTERN.format(field_name=field.name)
@@ -48,8 +45,7 @@ class AnonymisableModel(models.Model):
         Return a list of fields that can be anonymised.
 
         This is the full list of anonymisable fields, based on whether
-        they have a custom anonymisation method defined. It does not
-        take into account any include/exclude lists.
+        they have a custom anonymisation method defined.
 
         NB ForeignObjectRel is a subclass of Field, but we don't want
         to anonymise them (here), so we filter them out.
@@ -61,37 +57,6 @@ class AnonymisableModel(models.Model):
             if not isinstance(f, models.ForeignObjectRel)
             and cls.is_field_anonymisable(f)
         ]
-
-    @classmethod
-    def get_anonymisable_fields_summary(cls) -> list[FieldSummaryTuple]:
-        """Return tabular summary of all fields and whether they are anonymisable."""
-        return sorted(
-            [
-                FieldSummaryTuple(
-                    cls._meta.app_label,
-                    cls.__name__,
-                    f.name,
-                    f.__class__.__name__,
-                    cls.is_field_anonymisable(f),
-                )
-                for f in cls._meta.get_fields()
-                if not isinstance(f, models.ForeignObjectRel)
-            ],
-            key=lambda x: x.app + x.model + x.type + x.field,
-        )
-
-    def post_anonymise(self, **updates: AnonymisationResult) -> None:
-        """
-        Post-process the model after anonymisation.
-
-        Sometimes it may be necessary to perform additional processing
-        on the model after anonymisation. This method is called after
-        all fields have been anonymised, and is passed a dictionary of
-        field names to tuples of (old_value, new_value) for each field
-        that was anonymised.
-
-        """
-        pass
 
     def anonymise_field(self, field: models.Field) -> AnonymisationResult:
         """Anonymise a single field."""
@@ -114,3 +79,39 @@ class AnonymisableModel(models.Model):
         updates = self.anonymise_fields(*self.get_anonymisable_fields())
         self.post_anonymise(**updates)
         # self.anonymised_at = tz_now()
+
+    def post_anonymise(self, **updates: AnonymisationResult) -> None:
+        """
+        Post-process the model after anonymisation.
+
+        Sometimes it may be necessary to perform additional processing
+        on the model after anonymisation. This method is called after
+        all fields have been anonymised, and is passed a dictionary of
+        field names to tuples of (old_value, new_value) for each field
+        that was anonymised.
+
+        """
+        pass
+
+
+def model_fields_summary(cls: type[AnonymisableModel]) -> list[FieldSummaryTuple]:
+    """Return summary of all model fields and whether they are anonymisable."""
+    return sorted(
+        [
+            FieldSummaryTuple(
+                cls._meta.app_label,
+                cls.__name__,
+                f.name,
+                f.__class__.__name__,
+                cls.is_field_anonymisable(f),
+            )
+            for f in cls._meta.get_fields()
+            if not isinstance(f, models.ForeignObjectRel)
+        ],
+        key=lambda x: x.app + x.model + x.type + x.field,
+    )
+
+
+def anonymisable_models() -> list[type[models.Model]]:
+    """Return list of all models that subclass AnonymisableModel."""
+    return [m for m in django_apps.get_models() if issubclass(m, AnonymisableModel)]
