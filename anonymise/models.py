@@ -1,9 +1,12 @@
+import logging
 from typing import Any, TypeAlias
 
 from django.db import models
 
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
+
+logger = logging.getLogger(__name__)
 
 
 class AnonymisableModel(models.Model):
@@ -54,7 +57,8 @@ class AnonymisableModel(models.Model):
 
     def anonymise_field(self, field: models.Field) -> AnonymisationResult:
         """Anonymise a single field."""
-        func_name = self.ANONYMISE_FIELD_PATTERN.format(field.name)
+        logger.debug("Anonymising %s.%s.%s", self._meta.label, self.pk, field.name)
+        func_name = self.ANONYMISE_FIELD_PATTERN.format(field_name=field.name)
         if not getattr(self, func_name):
             raise NotImplementedError(f"{func_name} not implemented")
         old_value = getattr(self, field.name)
@@ -73,5 +77,6 @@ class AnonymisableModel(models.Model):
 
     def anonymise(self) -> None:
         """Anonymise all model object fields."""
+        logger.debug("Anonymising %s.%s", self._meta.label, self.pk)
         updates = self.anonymise_fields(*self.get_anonymisable_fields())
-        self.post_anonymise(*updates)
+        self.post_anonymise(**updates)

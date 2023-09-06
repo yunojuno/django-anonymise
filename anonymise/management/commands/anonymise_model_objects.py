@@ -1,12 +1,20 @@
 from typing import Any
 
 from django.apps import apps
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandParser
 
 from anonymise.models import AnonymisableModel
 
 
 class Command(BaseCommand):
+    def add_arguments(self, parser: CommandParser) -> None:
+        super().add_arguments(parser)
+        parser.add_argument(
+            "--commit",
+            action="store_true",
+            help="Commit changes to the database (call save on each object).",
+        )
+
     def handle(self, *args: Any, **options: Any) -> str | None:
         self.stdout.write("Anonymising model objects...")
         for model in [m for m in apps.get_models() if issubclass(m, AnonymisableModel)]:
