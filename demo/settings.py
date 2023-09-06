@@ -71,6 +71,9 @@ LOGGING = {
 
 ROOT_URLCONF = "demo.urls"
 
+# silence warning models.W042
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+
 if not DEBUG:
     raise Exception("This settings file can only be used with DEBUG=True")
 

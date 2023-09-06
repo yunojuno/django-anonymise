@@ -2,12 +2,13 @@ import logging
 from collections import namedtuple
 from typing import Any, TypeAlias
 
+from django.apps import apps as django_apps
 from django.db import models
 
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
 
-# Store summary used to communicate anonymisable fields to the user
+# Store info about the field and whether it is anonymisable
 FieldSummaryTuple = namedtuple(
     "FieldSummaryTuple", ("app", "model", "field", "type", "is_anonymisable")
 )
@@ -25,7 +26,11 @@ class AnonymisableModel(models.Model):
         abstract = True
 
     @classmethod
-    def _is_anonymisable(cls, field: models.Field) -> bool:
+    def get_subclasses(cls) -> list[type[models.Model]]:
+        return [m for m in django_apps.get_models() if issubclass(m, AnonymisableModel)]
+
+    @classmethod
+    def is_field_anonymisable(cls, field: models.Field) -> bool:
         if isinstance(field, (models.AutoField, models.ForeignObjectRel)):
             return False
         func_name = cls.ANONYMISE_FIELD_PATTERN.format(field_name=field.name)
@@ -47,7 +52,8 @@ class AnonymisableModel(models.Model):
         return [
             f
             for f in cls._meta.get_fields()
-            if not isinstance(f, models.ForeignObjectRel) and cls._is_anonymisable(f)
+            if not isinstance(f, models.ForeignObjectRel)
+            and cls.is_field_anonymisable(f)
         ]
 
     @classmethod
@@ -60,7 +66,7 @@ class AnonymisableModel(models.Model):
                     cls.__name__,
                     f.name,
                     f.__class__.__name__,
-                    cls._is_anonymisable(f),
+                    cls.is_field_anonymisable(f),
                 )
                 for f in cls._meta.get_fields()
                 if not isinstance(f, models.ForeignObjectRel)
@@ -93,13 +99,7 @@ class AnonymisableModel(models.Model):
 
     def anonymise_fields(self, *fields: models.Field) -> dict[str, AnonymisationResult]:
         """Anonymise a list of fields."""
-        updates = {}
-        for f in fields:
-            old_value = getattr(self, f.name)
-            self.anonymise_field(f)
-            new_value = getattr(self, f.name)
-            updates[f.name] = (old_value, new_value)
-        return updates
+        return {f.name: self.anonymise_field(f) for f in fields}
 
     def anonymise(self) -> None:
         """Anonymise all model object fields."""
