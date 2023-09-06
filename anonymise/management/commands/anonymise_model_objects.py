@@ -17,15 +17,13 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> str | None:
         self.stdout.write("Anonymising model objects...")
+        self.stdout.write("app | model | field | type | is_anonymisable")
+        self.stdout.write("--- | --- | --- | --- | ---")
         for model in [m for m in apps.get_models() if issubclass(m, AnonymisableModel)]:
-            self.stdout.write(f"Anonymising {model.__name__}...")
-            self.stdout.write(f"Anonymising {model._meta.label}...")
-            anon_fields = model.get_anonymisable_fields()
-            all_fields = sorted(model._meta.get_fields(), key=lambda f: f.name)
-            for field in all_fields:
+            field_summary = model.get_anonymisable_fields_summary()
+            for field in field_summary:
                 self.stdout.write(
-                    f"... {model._meta.label}.{field.name} | "
-                    f"{field.__class__.__name__} | "
-                    f"{field.is_relation} | {field in anon_fields}"
+                    f"{field.app} | {field.model} | {field.field} | {field.type} | "
+                    f"{field.is_anonymisable}"
                 )
         return None

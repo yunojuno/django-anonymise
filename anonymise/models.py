@@ -1,10 +1,16 @@
 import logging
+from collections import namedtuple
 from typing import Any, TypeAlias
 
 from django.db import models
 
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
+
+# Store summary used to communicate anonymisable fields to the user
+FieldSummaryTuple = namedtuple(
+    "FieldSummaryTuple", ("app", "model", "field", "type", "is_anonymisable")
+)
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +26,8 @@ class AnonymisableModel(models.Model):
 
     @classmethod
     def _is_anonymisable(cls, field: models.Field) -> bool:
+        if isinstance(field, (models.AutoField, models.ForeignObjectRel)):
+            return False
         func_name = cls.ANONYMISE_FIELD_PATTERN.format(field_name=field.name)
         return hasattr(cls, func_name)
 
@@ -42,6 +50,24 @@ class AnonymisableModel(models.Model):
             if not isinstance(f, models.ForeignObjectRel) and cls._is_anonymisable(f)
         ]
 
+    @classmethod
+    def get_anonymisable_fields_summary(cls) -> list[FieldSummaryTuple]:
+        """Return tabular summary of all fields and whether they are anonymisable."""
+        return sorted(
+            [
+                FieldSummaryTuple(
+                    cls._meta.app_label,
+                    cls.__name__,
+                    f.name,
+                    f.__class__.__name__,
+                    cls._is_anonymisable(f),
+                )
+                for f in cls._meta.get_fields()
+                if not isinstance(f, models.ForeignObjectRel)
+            ],
+            key=lambda x: x.app + x.model + x.type + x.field,
+        )
+
     def post_anonymise(self, **updates: AnonymisationResult) -> None:
         """
         Post-process the model after anonymisation.
@@ -50,7 +76,7 @@ class AnonymisableModel(models.Model):
         on the model after anonymisation. This method is called after
         all fields have been anonymised, and is passed a dictionary of
         field names to tuples of (old_value, new_value) for each field
-        that was anonymised..
+        that was anonymised.
 
         """
         pass
