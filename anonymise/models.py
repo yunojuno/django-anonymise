@@ -112,6 +112,6 @@ def model_fields_summary(cls: type[AnonymisableModel]) -> list[FieldSummaryTuple
     )
 
 
-def anonymisable_models() -> list[type[models.Model]]:
+def anonymisable_models() -> list[type[AnonymisableModel]]:
     """Return list of all models that subclass AnonymisableModel."""
     return [m for m in django_apps.get_models() if issubclass(m, AnonymisableModel)]
