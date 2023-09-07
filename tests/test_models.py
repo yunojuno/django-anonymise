@@ -2,21 +2,34 @@ from unittest import mock
 
 import pytest
 
-from anonymise.models import (
-    FieldSummaryTuple,
-    anonymisable_models,
-    model_fields_summary,
-)
+from anonymiser.decorators import register_anonymiser
+from anonymiser.models import FieldSummaryTuple
+from anonymiser.registry import _registry, anonymisable_models, register
 
+from .anon import UserAnonymiser
 from .models import User
 
 
-def test_anonymisable_models() -> None:
+@pytest.fixture
+def user_anonymiser() -> UserAnonymiser:
+    return UserAnonymiser()
+
+
+def test_registry() -> None:
+    assert anonymisable_models() == []
+    register(UserAnonymiser)
     assert anonymisable_models() == [User]
 
 
-def test_model_fields_summary() -> None:
-    assert model_fields_summary(User) == [
+def test_register_anonymiser() -> None:
+    _registry.clear()
+    assert anonymisable_models() == []
+    assert register_anonymiser(UserAnonymiser) == UserAnonymiser
+    assert anonymisable_models() == [User]
+
+
+def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
+    assert set(user_anonymiser.get_model_field_summary()) == {
         FieldSummaryTuple(
             app="tests",
             model="User",
@@ -108,7 +121,7 @@ def test_model_fields_summary() -> None:
             type="ManyToManyField",
             is_anonymisable=False,
         ),
-    ]
+    }
 
 
 @pytest.mark.django_db
@@ -119,20 +132,24 @@ class TestAnonymisableUserModel:
             username="testuser", first_name="fred", last_name="flintstone"
         )
 
-    def test_anonymise_not_implemented(self, user: User) -> None:
+    def test_anonymise_not_implemented(
+        self, user: User, user_anonymiser: UserAnonymiser
+    ) -> None:
         with pytest.raises(NotImplementedError):
-            user.anonymise_field(User._meta.get_field("last_name"))
+            user_anonymiser.anonymise_field(user, "last_name")
 
-    def test_anonymise_first_name_field(self, user: User) -> None:
+    def test_anonymise_first_name_field(
+        self, user: User, user_anonymiser: UserAnonymiser
+    ) -> None:
         assert user.first_name == "fred"
-        user.anonymise_first_name_field()
+        user_anonymiser.anonymise_field(user, "first_name")
         assert user.first_name == "Anonymous"
 
-    def test_anonymise(self, user: User) -> None:
+    def test_anonymise(self, user: User, user_anonymiser: UserAnonymiser) -> None:
         assert user.first_name == "fred"
         assert user.last_name == "flintstone"
         assert user.username == "testuser"
-        user.anonymise()
+        user_anonymiser.anonymise_object(user)
         assert user.first_name == "Anonymous"
         assert user.last_name == "flintstone"
         assert user.username == "testuser"
@@ -141,12 +158,19 @@ class TestAnonymisableUserModel:
         assert user.last_name == "flintstone"
         assert user.username == "testuser"
 
-    @mock.patch.object(User, "post_anonymise")
-    def test_post_anonymise(
-        self, mock_post_anonymise: mock.MagicMock, user: User
+    @mock.patch.object(UserAnonymiser, "post_anonymise_object")
+    def test_post_anonymise_object(
+        self,
+        mock_post_anonymise: mock.MagicMock,
+        user: User,
+        user_anonymiser: UserAnonymiser,
     ) -> None:
-        user.anonymise()
-        mock_post_anonymise.assert_called_once_with(first_name=("fred", "Anonymous"))
+        user_anonymiser.anonymise_object(user)
+        mock_post_anonymise.assert_called_once_with(
+            user, first_name=("fred", "Anonymous")
+        )
 
-    def test_get_anonymisable_fields(self) -> None:
-        assert User.get_anonymisable_fields() == [User._meta.get_field("first_name")]
+    def test_get_anonymisable_fields(self, user_anonymiser: UserAnonymiser) -> None:
+        assert user_anonymiser.get_anonymisable_fields() == [
+            User._meta.get_field("first_name")
+        ]
