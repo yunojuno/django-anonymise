@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "my-app"
+name = "django-anonymise"
 version = "0.1.0"
 description = "Project template for Django app, using Poetry."
 license = "MIT"
@@ -28,7 +28,6 @@ packages = [{ include = "anonymiser" }]
 [tool.poetry.dependencies]
 python = "^3.10"
 django = "^3.2 || ^4.0 || ^5.0"
-django-anonymous = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
 black = "*"
