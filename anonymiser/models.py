@@ -3,8 +3,7 @@ from collections import namedtuple
 from typing import Any, TypeAlias
 
 from django.db import models
-
-# from django.utils.timezone import now as tz_now
+from django.template.loader import render_to_string
 
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
@@ -90,3 +89,12 @@ class BaseAnonymiser:
 
         """
         pass
+
+    def print_summary(self, template_name: str = "field_summary.md") -> str:
+        """Print a summary of the anonymiser model fields."""
+        return render_to_string(
+            template_name,
+            {
+                "fields": self.get_model_field_summary(),
+            },
+        )
