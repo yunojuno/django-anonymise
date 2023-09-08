@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from anonymiser.models import FieldSummaryTuple
+from anonymiser.models import FieldSummaryData
 
 from .anon import UserAnonymiser
 from .models import User
@@ -14,99 +14,30 @@ def user_anonymiser() -> UserAnonymiser:
 
 
 def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
-    assert set(user_anonymiser.get_model_field_summary()) == {
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="id",
-            type="AutoField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="is_active",
-            type="BooleanField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="is_staff",
-            type="BooleanField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="is_superuser",
-            type="BooleanField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="first_name",
-            type="CharField",
-            is_anonymisable=True,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="last_name",
-            type="CharField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="password",
-            type="CharField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="username",
-            type="CharField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="date_joined",
-            type="DateTimeField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="last_login",
-            type="DateTimeField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="email",
-            type="EmailField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="groups",
-            type="ManyToManyField",
-            is_anonymisable=False,
-        ),
-        FieldSummaryTuple(
-            app="tests",
-            model="User",
-            field="user_permissions",
-            type="ManyToManyField",
-            is_anonymisable=False,
-        ),
-    }
+    assert user_anonymiser.get_model_field_summary() == [
+        FieldSummaryData(User._meta.get_field("id"), False),
+        FieldSummaryData(User._meta.get_field("password"), False),
+        FieldSummaryData(User._meta.get_field("last_login"), False),
+        FieldSummaryData(User._meta.get_field("is_superuser"), False),
+        FieldSummaryData(User._meta.get_field("username"), False),
+        FieldSummaryData(User._meta.get_field("first_name"), True),
+        FieldSummaryData(User._meta.get_field("last_name"), False),
+        FieldSummaryData(User._meta.get_field("email"), False),
+        FieldSummaryData(User._meta.get_field("is_staff"), False),
+        FieldSummaryData(User._meta.get_field("is_active"), False),
+        FieldSummaryData(User._meta.get_field("date_joined"), False),
+        FieldSummaryData(User._meta.get_field("groups"), False),
+        FieldSummaryData(User._meta.get_field("user_permissions"), False),
+    ]
+
+
+def test_model_fields_data(user_anonymiser: UserAnonymiser) -> None:
+    fsd = FieldSummaryData(User._meta.get_field("first_name"), True)
+    assert fsd.app == "tests"
+    assert fsd.model == "User"
+    assert fsd.field_name == "first_name"
+    assert fsd.field_type == "CharField"
+    assert fsd.is_anonymisable is True
 
 
 @pytest.mark.django_db

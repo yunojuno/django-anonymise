@@ -1,10 +1,10 @@
-# from anonymiser.decorators import register_anonymiser
+from anonymiser.decorators import register_anonymiser
 from anonymiser.models import BaseAnonymiser
 
 from .models import User
 
 
-# @register_anonymiser
+@register_anonymiser
 class UserAnonymiser(BaseAnonymiser):
     model = User
 

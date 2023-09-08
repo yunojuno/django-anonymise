@@ -22,7 +22,7 @@ def _register(anonymiser: type[BaseAnonymiser]) -> None:
         raise ValueError("Anonymiser must have a model attribute set.")
     if model in _registry:
         raise ValueError(f"Anonymiser for {model} already registered")
-    logging.debug("Adding anonymiser for %s to registry", model)
+    logging.debug("Adding anonymiser for %s to registry", model._meta.label)
     _registry[model] = anonymiser
 
 
@@ -36,5 +36,12 @@ def anonymisable_models() -> list[type[models.Model]]:
     return list(_registry.keys())
 
 
-def get_model_anonymiser(model: type[models.Model]) -> BaseAnonymiser:
-    return _registry[model]()
+def anonymisers() -> list[type[BaseAnonymiser]]:
+    return list(_registry.values())
+
+
+def get_model_anonymiser(model: type[models.Model]) -> BaseAnonymiser | None:
+    """Return newly instantiated anonymiser for model."""
+    if anonymiser := _registry.get(model):
+        return anonymiser()
+    return None
