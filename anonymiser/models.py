@@ -24,6 +24,10 @@ class FieldSummaryData:
     is_anonymisable: bool
 
     @property
+    def model_label(self) -> str:
+        return self.field.model._meta.label
+
+    @property
     def app(self) -> str:
         return self.field.model._meta.app_label
 
@@ -61,6 +65,9 @@ class BaseAnonymiser:
 
     # Override with the model to be anonymised
     model: type[models.Model]
+
+    # override with a list of fields to exclude from anonymisation report
+    exclude_rules = (lambda f: f.is_relation or isinstance(f, models.AutoField),)
 
     def get_model_fields(self) -> list[models.Field]:
         """Return a list of fields on the model."""
