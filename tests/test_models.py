@@ -90,3 +90,9 @@ class TestAnonymisableUserModel:
         assert user_anonymiser.get_anonymisable_fields() == [
             User._meta.get_field("first_name")
         ]
+
+    def test_anonymise_queryset(
+        self, user: User, user_anonymiser: UserAnonymiser
+    ) -> None:
+        assert user_anonymiser.anonymise_queryset(User.objects.none()) == 0
+        assert user_anonymiser.anonymise_queryset(User.objects.all()) == 1

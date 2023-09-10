@@ -115,11 +115,14 @@ class BaseAnonymiser:
             output[field.name] = self.anonymise_field(obj, field.name)
         self.post_anonymise_object(obj, **output)
 
-    def anonymise_queryset(self, queryset: models.QuerySet) -> None:
+    def anonymise_queryset(self, queryset: models.QuerySet) -> int:
         """Anonymise all objects in the queryset (and SAVE)."""
+        count = 0
         for obj in queryset:
             self.anonymise_object(obj)
             obj.save()
+            count += 1
+        return count
 
     def post_anonymise_object(
         self, obj: models.Model, **updates: AnonymisationResult
