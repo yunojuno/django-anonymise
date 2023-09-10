@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Any
 
 from django.apps import apps
@@ -27,16 +26,21 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args: Any, **options: Any) -> None:
-        context_models = defaultdict(list)
+        model_fields: list[FieldSummaryData] = []
+        model_anonymisers: dict[str, str] = {}
         for model in self.get_models():
+            model_name = model._meta.label
             anonymiser = get_model_anonymiser(model)
+            anonymiser_name = anonymiser.__class__.__name__ if anonymiser else ""
+            model_anonymisers[model_name] = anonymiser_name
             for f in self.get_fields(model):
                 is_anonymisable = False
                 if anonymiser:
                     is_anonymisable = anonymiser.is_field_anonymisable(f.name)
                 field_data = FieldSummaryData(f, is_anonymisable)
-                context_models[field_data.model_label].append(field_data)
+                model_fields.append(field_data)
         out = render_to_string(
-            "display_model_anonymisation.md", {"models": dict(context_models)}
+            "display_model_anonymisation.md",
+            {"model_anonymisers": model_anonymisers, "model_fields": model_fields},
         )
         self.stdout.write(out)
