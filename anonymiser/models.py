@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Any, TypeAlias
+from typing import Any, Iterator, TypeAlias
 
 from django.db import models
 
@@ -115,7 +115,7 @@ class BaseAnonymiser:
             output[field.name] = self.anonymise_field(obj, field.name)
         self.post_anonymise_object(obj, **output)
 
-    def anonymise_queryset(self, queryset: models.QuerySet) -> int:
+    def anonymise_queryset(self, queryset: Iterator[models.Model]) -> int:
         """Anonymise all objects in the queryset (and SAVE)."""
         count = 0
         for obj in queryset:
