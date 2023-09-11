@@ -1,81 +1,78 @@
-# Poetry Template
+# Django Anonymiser
 
-Django app template, using `poetry-python` as dependency manager.
+Django app for managing / tracking Django model anonymisation.
 
-This project is a template that can be cloned and re-used for redistributable apps.
+## Status
+This is currently used internally only, and has not been publisehd to
+PyPI - use with caution.
 
-It includes the following:
+## Background
+We currently have a pattern of each model having its own `anonymise`
+method, and a management command that iterates over each model calling
+said method on each object. This works, but it's impossible to track -
+we don't know which models, and which fields on those models, are
+actually being anonymised, and the documentation suffers the same fate
+as all documentation is that is not auto-generated.
 
--   `poetry` for dependency management
--   `ruff`, `black` for linting / format
--   `pre-commit` to run linting
--   `mypy` for type checking
--   `tox` and Github Actions for builds and CI
+This library adopts the pattern used by the `django-side-effects`
+library of having a "registry" of anonymisers and a management command
+that outputs the complete listing of all anonymisers and all fields
+anonymised. This output can then be plugged into the
+`django-project-checks` framework and stored in the repo as a "snapshot"
+that is then checked in the CI pipeline, meaning it is guaranteed to be
+up-to-date.
 
-There are default config files for the linting and mypy.
+The anonymisation itself doesn't change - it's just shifting the code
+around.
 
-## Principles
+## Usage
 
-The motivation for this project is to provide a consistent set of standards across all YunoJuno
-public Python/Django projects. The principles we want to encourage are:
+As an example - this is a hypothetical User model's anonymisation today:
 
--   Simple for developers to get up-and-running
--   Consistent style (`black`, `ruff`)
--   Full type hinting (`mypy`)
+```python
+# models.py
+class User:
 
-## Versioning
+    def anonymise(self) -> None:
+        self.first_name = "Fred"
+        self.last_name = "Flinstone"
+```
+Using this library we remove the `anonymise` method and create and register
+a new anonymiser that splits out each field:
+```python
+# anonymisers.py
+@register_anonymiser
+class UserAnonymiser(BaseAnonymiser):
+    model = User
 
-We currently support Python 3.7+, and Django 3.2+. We will aggressively upgrade Django versions, and
-we won't introduce hacks to support breaking changes - if Django 4 introduces something that 2.2
-doesn't support we'll drop it.
+    def anonymise_first_name(self, obj: User) -> None:
+        obj.first_name = "Fred"
 
-## Tests
-
-#### Tests package
-
-The package tests themselves are _outside_ of the main library code, in a package that is itself a
-Django app (it contains `models`, `settings`, and any other artifacts required to run the tests
-(e.g. `urls`).) Where appropriate, this test app may be runnable as a Django project - so that
-developers can spin up the test app and see what admin screens look like, test migrations, etc.
-
-#### Running tests
-
-The tests themselves use `pytest` as the test runner. If you have installed the `poetry` evironment,
-you can run them thus:
+    def anonymise_last_name(self, obj: User) -> None:
+        obj.last_name = "Flintstone"
 
 ```
-$ poetry run pytest
+You should import the `anonymisers` module in your `apps.py` in order to
+ensure that it is registered:
+```python
+# apps.py
+from django.apps import AppConfig
+
+
+class UsersConfig(AppConfig):
+    name = "Users"
+
+    def ready(self) -> None:
+        super().ready()
+        from . import anonymisers  # noqa F401
 ```
 
-or
+Once set up, running the `display_model_anonymisation` management command
+will output a list of all models in the project, whether they have a
+registered anonymiser, and then all model fields in the project and
+whether they are anonymised.
 
-```
-$ poetry shell
-(my_app) $ pytest
-```
+The snapshot for this project itself is `tests/model_anonymisation.md`.
 
-The full suite is controlled by `tox`, which contains a set of environments that will format, lint,
-and test against all support Python + Django version combinations.
-
-```
-$ tox
-...
-______________________ summary __________________________
-  fmt: commands succeeded
-  lint: commands succeeded
-  mypy: commands succeeded
-  py37-django22: commands succeeded
-  py37-django32: commands succeeded
-  py37-djangomain: commands succeeded
-  py38-django22: commands succeeded
-  py38-django32: commands succeeded
-  py38-djangomain: commands succeeded
-  py39-django22: commands succeeded
-  py39-django32: commands succeeded
-  py39-djangomain: commands succeeded
-```
-
-#### CI
-
-There is a `.github/workflows/tox.yml` file that can be used as a baseline to run all of the tests
-on Github. This file runs the oldest (2.2), newest (3.2), and head of the main Django branch.
+The output format of the snapshot can be overridden - it's rendered using
+a Django template `templates/display_model_anonymisation.md`.
