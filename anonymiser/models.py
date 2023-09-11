@@ -69,6 +69,27 @@ class BaseAnonymiser:
     # override with a list of fields to exclude from anonymisation report
     exclude_rules = (lambda f: f.is_relation or isinstance(f, models.AutoField),)
 
+    def __setattr__(self, __name: str, __value: Any) -> None:
+        """
+        Prevent setting of attribute on the anonymiser itself.
+
+        This is a common mistake when writing anonymiser functions -
+        inside the `anonymise_FOO` method you call `self.FOO = "bar"`
+        instead of `obj.FOO = "bar"`, because that's the natural way to
+        write it.
+
+        This will raise an AttributeError if you try to set an attribute
+        that looks like it maps to an anonymiser method.
+
+        """
+        if hasattr(self, f"anonymise_{__name}"):
+            raise AttributeError(
+                "Cannot set anonymiser attributes directly - did you mean to "
+                "use 'obj' instead of 'self' in method "
+                f"`{self.__class__.__name__}.anonymise_{__name}`?"
+            )
+        super().__setattr__(__name, __value)
+
     def get_model_fields(self) -> list[models.Field]:
         """Return a list of fields on the model."""
         if not self.model:

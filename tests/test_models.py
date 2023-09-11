@@ -4,7 +4,7 @@ import pytest
 
 from anonymiser.models import FieldSummaryData
 
-from .anon import UserAnonymiser
+from .anon import BadUserAnonymiser, UserAnonymiser
 from .models import User
 
 
@@ -96,3 +96,8 @@ class TestAnonymisableUserModel:
     ) -> None:
         assert user_anonymiser.anonymise_queryset(User.objects.none()) == 0
         assert user_anonymiser.anonymise_queryset(User.objects.all()) == 1
+
+
+def test_bad_anonymiser() -> None:
+    with pytest.raises(AttributeError):
+        BadUserAnonymiser().anonymise_field(User(), "first_name")
