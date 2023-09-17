@@ -26,6 +26,7 @@ def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
         FieldSummaryData(User._meta.get_field("is_staff"), False),
         FieldSummaryData(User._meta.get_field("is_active"), False),
         FieldSummaryData(User._meta.get_field("date_joined"), False),
+        FieldSummaryData(User._meta.get_field("uuid"), False),
         FieldSummaryData(User._meta.get_field("groups"), False),
         FieldSummaryData(User._meta.get_field("user_permissions"), False),
     ]
