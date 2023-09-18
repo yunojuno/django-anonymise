@@ -1,13 +1,9 @@
 from tests.settings import *  # noqa
+from os import getenv
 
-# NB this is obviously not a secure password, but it's only for testing
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "django_anonymiser",
-        "USER": "postgres",
-        "PASSWORD": "postgres",
-        "HOST": "localhost",
-        "PORT": "5432",
-    }
-}
+import dj_database_url
+
+DEFAULT_DATABASE_URL = getenv(
+    "DATABASE_URL", "postgres://postgres@localhost:5432/django_anonymiser"
+)
+DATABASES["default"] = dj_database_url.parse(DEFAULT_DATABASE_URL)  # noqa: F405

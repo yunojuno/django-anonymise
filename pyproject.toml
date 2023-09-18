@@ -29,9 +29,8 @@ packages = [{ include = "anonymiser" }]
 python = "^3.10"
 django = "^3.2 || ^4.0 || ^5.0"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 dj-database-url = "*"
-psycopg2-binary = "*"
 black = "*"
 coverage = "*"
 freezegun = "*"
@@ -42,6 +41,11 @@ pytest-cov = "*"
 pytest-django = "*"
 ruff = "*"
 tox = "*"
+# optional - used for testing with Postgres
+psycopg2-binary = { version = "*", optional = true }
+
+[tool.poetry.extras]
+postgres = ["psycopg2-binary"]
 
 [build-system]
 requires = ["poetry>=0.12"]

@@ -74,8 +74,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    # env:
-    #   TOXENV: pg-only
+    env:
+      TOXENV: pg-only
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/django_anonymiser
 
     steps:
       - name: Check out the repository
@@ -89,4 +90,4 @@ jobs:
       - name: Install and run tox
         run: |
           pip install tox
-          tox -e pg-only
+          tox
