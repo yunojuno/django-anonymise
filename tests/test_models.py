@@ -8,11 +8,6 @@ from .anon import BadUserAnonymiser, UserAnonymiser
 from .models import User
 
 
-@pytest.fixture
-def user_anonymiser() -> UserAnonymiser:
-    return UserAnonymiser()
-
-
 def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
     assert user_anonymiser.get_model_field_summary() == [
         FieldSummaryData(User._meta.get_field("id"), False),
@@ -43,12 +38,6 @@ def test_model_fields_data(user_anonymiser: UserAnonymiser) -> None:
 
 @pytest.mark.django_db
 class TestAnonymisableUserModel:
-    @pytest.fixture
-    def user(self) -> User:
-        return User.objects.create_user(
-            username="testuser", first_name="fred", last_name="flintstone"
-        )
-
     def test_anonymise_not_implemented(
         self, user: User, user_anonymiser: UserAnonymiser
     ) -> None:
@@ -65,15 +54,15 @@ class TestAnonymisableUserModel:
     def test_anonymise(self, user: User, user_anonymiser: UserAnonymiser) -> None:
         assert user.first_name == "fred"
         assert user.last_name == "flintstone"
-        assert user.username == "testuser"
+        assert user.username == "testuser1"
         user_anonymiser.anonymise_object(user)
         assert user.first_name == "Anonymous"
         assert user.last_name == "flintstone"
-        assert user.username == "testuser"
+        assert user.username == "testuser1"
         user.refresh_from_db()
         assert user.first_name == "fred"
         assert user.last_name == "flintstone"
-        assert user.username == "testuser"
+        assert user.username == "testuser1"
 
     @mock.patch.object(UserAnonymiser, "post_anonymise_object")
     def test_post_anonymise_object(
