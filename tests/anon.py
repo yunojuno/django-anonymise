@@ -11,16 +11,17 @@ from .models import User
 @register_anonymiser
 class UserAnonymiser(BaseAnonymiser):
     model = User
-
-    redact_first_name = "FIRST_NAME"
-    redact_last_name = "LAST_NAME"
-    redact_uuid = GenerateUuid4()
-    redact_email = Concat(
-        models.F("first_name"),
-        models.Value("."),
-        models.F("last_name"),
-        models.Value("@example.com"),
-    )
+    field_redactions = {
+        "first_name": "FIRST_NAME",
+        "last_name": "LAST_NAME",
+        "uuid": GenerateUuid4(),
+        "email": Concat(
+            models.F("first_name"),
+            models.Value("."),
+            models.F("last_name"),
+            models.Value("@example.com"),
+        ),
+    }
 
     def anonymise_first_name(self, obj: User) -> None:
         obj.first_name = "Anonymous"

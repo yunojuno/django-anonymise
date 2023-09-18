@@ -69,6 +69,10 @@ class BaseAnonymiser:
     # override with a list of fields to exclude from anonymisation report
     exclude_rules = (lambda f: f.is_relation or isinstance(f, models.AutoField),)
 
+    # field_name: redaction_value. redactoin_value can be a static value or a
+    # callable, such as a function (e.g. F expression) or a class (e.g. Func).
+    field_redactions: dict[str, Any] = {}
+
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
         Prevent setting of attribute on the anonymiser itself.
@@ -156,20 +160,20 @@ class BaseAnonymiser:
         """
         pass
 
-    def collect_redactions(self) -> dict[str, Any]:
-        """
-        Return a dict of field names to redaction functions.
+    # def collect_redactions(self) -> dict[str, Any]:
+    #     """
+    #     Return a dict of field names to redaction functions.
 
-        This is used by the redact_queryset method to redact fields that
-        support redaction. Each value can be a static value or a callable,
-        such as a function (e.g. F expression) or a class (e.g. Func).
+    #     This is used by the redact_queryset method to redact fields that
+    #     support redaction. Each value can be a static value or a callable,
+    #     such as a function (e.g. F expression) or a class (e.g. Func).
 
-        """
-        return {
-            f.name: getattr(self, f"redact_{f.name}")
-            for f in self.get_model_fields()
-            if hasattr(self, f"redact_{f.name}")
-        }
+    #     """
+    #     return {
+    #         f.name: getattr(self, f"redact_{f.name}")
+    #         for f in self.get_model_fields()
+    #         if hasattr(self, f"redact_{f.name}")
+    #     }
 
     def redact_queryset(self, queryset: models.QuerySet[models.Model]) -> int:
-        return queryset.update(**self.collect_redactions())
+        return queryset.update(**self.field_redactions)
