@@ -45,7 +45,8 @@ class TestPostgresRedaction:
         uuid = user.uuid
         assert user_anonymiser.redact_queryset(User.objects.all()) == 1
         user.refresh_from_db()
-        assert user.first_name == user_anonymiser.field_redactions["first_name"]
+        assert user.first_name == "FIRST_NAME"
+        assert user.last_name == "LAST_NAME"
         assert user.uuid != uuid
 
     def test_redact_queryset_two(

@@ -69,7 +69,7 @@ class BaseAnonymiser:
     # override with a list of fields to exclude from anonymisation report
     exclude_rules = (lambda f: f.is_relation or isinstance(f, models.AutoField),)
 
-    # field_name: redaction_value. redactoin_value can be a static value or a
+    # field_name: redaction_value. redaction_value can be a static value or a
     # callable, such as a function (e.g. F expression) or a class (e.g. Func).
     field_redactions: dict[str, Any] = {}
 
@@ -160,20 +160,58 @@ class BaseAnonymiser:
         """
         pass
 
-    # def collect_redactions(self) -> dict[str, Any]:
-    #     """
-    #     Return a dict of field names to redaction functions.
+    def auto_field_redactions(self) -> dict[str, str]:
+        """
+        Return a dict of redaction_values for all text fields.
 
-    #     This is used by the redact_queryset method to redact fields that
-    #     support redaction. Each value can be a static value or a callable,
-    #     such as a function (e.g. F expression) or a class (e.g. Func).
+        This is used to "auto-redact" all char/text fields with "X" - if
+        the field does not use choices, and is not a primary key or
+        unique field.
 
-    #     """
-    #     return {
-    #         f.name: getattr(self, f"redact_{f.name}")
-    #         for f in self.get_model_fields()
-    #         if hasattr(self, f"redact_{f.name}")
-    #     }
+        """
 
-    def redact_queryset(self, queryset: models.QuerySet[models.Model]) -> int:
-        return queryset.update(**self.field_redactions)
+        def _max_length(f: models.Field) -> int:
+            if isinstance(f, models.CharField):
+                return f.max_length
+            if isinstance(f, models.TextField):
+                return 400
+            raise ValueError("Field must be CharField or TextField")
+
+        return {
+            f.name: _max_length(f) * "X"
+            for f in self.get_model_fields()
+            if isinstance(f, (models.CharField, models.TextField))
+            and not f.choices
+            and not f.primary_key
+            and not getattr(f, "unique", False)
+        }
+
+    def redact_queryset(
+        self,
+        queryset: models.QuerySet[models.Model],
+        auto_redact: bool = True,
+        **field_overrides: Any,
+    ) -> int:
+        """
+        Redact a queryset (and SAVE).
+
+        The `auto_redact` parameter will automatically redact all text
+        fields with "X" if they are not already covered in the
+        field_redactions dict.
+
+        The `field_overrides` parameter allows you to pass in a dict of
+        field_name: redaction_value to override any other redactions.
+
+        The redactions cascade in the following order:
+
+        - auto_redactions (all non-choice text fields)
+        - field_redactions (static values set on the anonymiser)
+        - field_overrides (values passed in to method)
+
+        """
+        redactions: dict[str, Any] = {}
+        if auto_redact:
+            redactions.update(self.auto_field_redactions())
+        redactions.update(self.field_redactions)
+        redactions.update(field_overrides)
+        return queryset.update(**redactions)
