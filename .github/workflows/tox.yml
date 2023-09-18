@@ -33,8 +33,9 @@ jobs:
           tox
 
   test:
-    name: Run tests
+    name: Run tests (SQLite)
     runs-on: ubuntu-latest
+
     strategy:
       matrix:
         python: ["3.10", "3.11"]
@@ -42,6 +43,42 @@ jobs:
 
     env:
       TOXENV: py${{ matrix.python }}-django${{ matrix.django }}
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install and run tox
+        run: |
+          pip install tox
+          tox
+
+  test-pg:
+    name: Run tests (Postgres)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toxenv: [postgres]
+    env:
+      TOXENV: py${{ matrix.python }}-django${{ matrix.django }}
+
+    # run postgres tests on GH
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Check out the repository
