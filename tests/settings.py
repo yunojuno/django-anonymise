@@ -1,10 +1,17 @@
-from os import path
+from os import getenv, path
+
+import dj_database_url
 
 DEBUG = True
 TEMPLATE_DEBUG = True
 USE_TZ = True
 
-DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": "test.db"}}
+DATABASE_URL = getenv("DATABASE_URL", "sqlite:///django_anonymise.db")
+DATABASES = {"default": dj_database_url.parse(DATABASE_URL)}
+# used to skip non-PG tests
+IS_SQLITE = DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3"
+IS_POSTGRES = DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql"
+
 
 INSTALLED_APPS = (
     "django.contrib.admin",

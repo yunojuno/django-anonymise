@@ -28,6 +28,8 @@ packages = [{ include = "anonymiser" }]
 [tool.poetry.dependencies]
 python = "^3.10"
 django = "^3.2 || ^4.0 || ^5.0"
+# optional - used for testing with Postgres
+psycopg2-binary = { version = "*", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 dj-database-url = "*"
@@ -41,8 +43,6 @@ pytest-cov = "*"
 pytest-django = "*"
 ruff = "*"
 tox = "*"
-# optional - used for testing with Postgres
-psycopg2-binary = { version = "*", optional = true }
 
 [tool.poetry.extras]
 postgres = ["psycopg2-binary"]
