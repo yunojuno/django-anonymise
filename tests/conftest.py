@@ -13,14 +13,22 @@ IS_POSTGRES = (
 @pytest.fixture
 def user() -> User:
     return User.objects.create_user(
-        username="testuser1", first_name="fred", last_name="flintstone"
+        username="testuser1",
+        first_name="fred",
+        last_name="flintstone",
+        location="London",
+        biography="I am a test user",
     )
 
 
 @pytest.fixture
 def user2() -> User:
     return User.objects.create_user(
-        username="testuser2", first_name="ginger", last_name="rogers"
+        username="testuser2",
+        first_name="ginger",
+        last_name="rogers",
+        location="New York",
+        biography="I am another test user",
     )
 
 

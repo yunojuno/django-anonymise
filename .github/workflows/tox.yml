@@ -74,24 +74,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-    strategy:
-      matrix:
-        python: ["3.11"]
-        django: ["42"]
-
-    env:
-      TOXENV: postgres
+    # env:
+    #   TOXENV: pg-only
 
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python }}
+          python-version: "3.11"
 
       - name: Install and run tox
         run: |
           pip install tox
-          tox
+          tox -e pg-only

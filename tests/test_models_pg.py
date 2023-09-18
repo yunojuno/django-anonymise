@@ -60,3 +60,34 @@ class TestPostgresRedaction:
         user2.refresh_from_db()
         # confirm that we haven't reused the same uuid for all objects
         assert user.uuid != user2.uuid
+
+    @pytest.mark.parametrize(
+        "auto_redact,location,biography",
+        [
+            (True, 255 * "X", 400 * "X"),
+            (False, "London", "I am a test user"),
+        ],
+    )
+    def test_redact_queryset__auto_redact(
+        self,
+        user: User,
+        user_anonymiser: UserAnonymiser,
+        auto_redact: bool,
+        location: str,
+        biography: str,
+    ) -> None:
+        user_anonymiser.redact_queryset(User.objects.all(), auto_redact=auto_redact)
+        user.refresh_from_db()
+        # auto-redacted fields
+        assert user.location == location
+        assert user.biography == biography
+
+    def test_redact_queryset__field_overrides(
+        self,
+        user: User,
+        user_anonymiser: UserAnonymiser,
+    ) -> None:
+        user_anonymiser.redact_queryset(User.objects.all(), location="Area 51")
+        user.refresh_from_db()
+        # auto-redacted fields
+        assert user.location == "Area 51"

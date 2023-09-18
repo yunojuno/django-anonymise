@@ -6,3 +6,6 @@ from django.db import models
 
 class User(AbstractUser):
     uuid = models.UUIDField(unique=True, default=uuid4, editable=False)
+    location = models.CharField(max_length=255, blank=True)
+    biography = models.TextField(blank=True)
+    date_of_birth = models.DateField(blank=True, null=True)
