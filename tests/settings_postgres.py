@@ -1,9 +1,10 @@
-from tests.settings import *  # noqa
+from .settings import *  # noqa
 from os import getenv
 
 import dj_database_url
 
-DEFAULT_DATABASE_URL = getenv(
-    "DATABASE_URL", "postgres://postgres@localhost:5432/django_anonymiser"
-)
-DATABASES["default"] = dj_database_url.parse(DEFAULT_DATABASE_URL)  # noqa: F405
+# this is the default database URL for the docker-compose setup
+DEFAULT_DATABASE_URL = "postgres://postgres:postgres@localhost:5432/django_anonymiser"
+DATABASE_URL = getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+
+DATABASES["default"] = dj_database_url.parse(DATABASE_URL)  # noqa: F405

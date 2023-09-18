@@ -66,17 +66,17 @@ jobs:
       postgres:
         image: postgres
         env:
+          POSTGRES_DB: postgres
+          POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
         # Set health checks to wait until postgres has started
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
     env:
-      TOXENV: pg-only
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/django_anonymiser
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
 
     steps:
       - name: Check out the repository
@@ -87,7 +87,8 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install and run tox
-        run: |
-          pip install tox
-          tox
+      - name: Install tox
+        run: pip install tox
+
+      - name: Run tox (pg-only)
+        run: tox -e pg-only
