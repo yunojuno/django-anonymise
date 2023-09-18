@@ -59,15 +59,9 @@ jobs:
           tox
 
   test-pg:
-    name: Run tests (Postgres)
+    name: Run tests (PostgreSQL)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        toxenv: [postgres]
-    env:
-      TOXENV: py${{ matrix.python }}-django${{ matrix.django }}
 
-    # run postgres tests on GH
     services:
       postgres:
         image: postgres
@@ -79,6 +73,14 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+    strategy:
+      matrix:
+        python: ["3.11"]
+        django: ["42"]
+
+    env:
+      TOXENV: postgres
 
     steps:
       - name: Check out the repository
