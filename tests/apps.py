@@ -12,4 +12,4 @@ class TestsConfig(AppConfig):
     def ready(self) -> None:
         super().ready()
         logger.debug("Adding tests app anonymisers")
-        from . import anon  # noqa F401
+        from . import anonymisers  # noqa F401

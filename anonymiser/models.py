@@ -66,11 +66,8 @@ class BaseAnonymiser:
     # Override with the model to be anonymised
     model: type[models.Model]
 
-    # override with a list of fields to exclude from anonymisation report
-    exclude_rules = (lambda f: f.is_relation or isinstance(f, models.AutoField),)
-
-    # field_name: redaction_value. redaction_value can be a static value or a
-    # callable, such as a function (e.g. F expression) or a class (e.g. Func).
+    # field_name: redaction_value. redaction_value can be a static value
+    # or a db function, e.g. F("field_name") or Value("static value").
     field_redactions: dict[str, Any] = {}
 
     def __setattr__(self, __name: str, __value: Any) -> None:
@@ -189,7 +186,7 @@ class BaseAnonymiser:
     def redact_queryset(
         self,
         queryset: models.QuerySet[models.Model],
-        auto_redact: bool = True,
+        auto_redact: bool = False,
         **field_overrides: Any,
     ) -> int:
         """

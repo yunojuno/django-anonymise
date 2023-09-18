@@ -8,7 +8,7 @@ from django.db.backends.utils import CursorWrapper
 from anonymiser.db.expressions import GenerateUuid4
 from anonymiser.models import FieldSummaryData
 
-from .anon import BadUserAnonymiser, UserAnonymiser
+from .anonymisers import BadUserAnonymiser, UserAnonymiser, UserRedacter
 from .models import User
 
 
@@ -125,18 +125,7 @@ def test_bad_anonymiser() -> None:
 
 
 @pytest.mark.django_db
-@mock.patch.object(CursorWrapper, "execute")
-@skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
-def test_generate_uuid4(mock_execute: mock.MagicMock) -> None:
-    User.objects.update(uuid=GenerateUuid4())
-    assert (
-        mock_execute.call_args[0][0]
-        == 'UPDATE "tests_user" SET "uuid" = uuid_generate_v4()'
-    )
-
-
-@pytest.mark.django_db
-class TestPostgresRedaction:
+class TestRedaction:
     @pytest.fixture(autouse=settings.IS_POSTGRES)
     def activate_postgresql_uuid(self) -> None:
         """Activate the uuid-ossp extension in the test database."""
@@ -144,36 +133,38 @@ class TestPostgresRedaction:
             cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
 
     @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
-    def test_redact_queryset_none(
-        self, user: User, user_anonymiser: UserAnonymiser
-    ) -> None:
-        assert user_anonymiser.redact_queryset(User.objects.none()) == 0
+    @mock.patch.object(CursorWrapper, "execute")
+    def test_generate_uuid4(self, mock_execute: mock.MagicMock) -> None:
+        User.objects.update(uuid=GenerateUuid4())
+        assert (
+            mock_execute.call_args[0][0]
+            == 'UPDATE "tests_user" SET "uuid" = uuid_generate_v4()'
+        )
 
-    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
-    def test_redact_queryset_one(
-        self, user: User, user_anonymiser: UserAnonymiser
+    def test_redact_queryset_none(
+        self, user: User, user_redacter: UserRedacter
     ) -> None:
-        uuid = user.uuid
-        assert user_anonymiser.redact_queryset(User.objects.all()) == 1
+        assert user_redacter.redact_queryset(User.objects.none()) == 0
+
+    def test_redact_queryset_one(self, user: User, user_redacter: UserRedacter) -> None:
+        assert user_redacter.redact_queryset(User.objects.all()) == 1
         user.refresh_from_db()
         assert user.first_name == "FIRST_NAME"
         assert user.last_name == "LAST_NAME"
-        assert user.uuid != uuid
+        assert user.email == f"user_{user.id}@example.com"
 
-    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
     def test_redact_queryset_two(
         self,
         user: User,
         user2: User,
-        user_anonymiser: UserAnonymiser,
+        user_redacter: UserRedacter,
     ) -> None:
-        assert user_anonymiser.redact_queryset(User.objects.all()) == 2
+        assert user_redacter.redact_queryset(User.objects.all()) == 2
         user.refresh_from_db()
         user2.refresh_from_db()
         # confirm that we haven't reused the same uuid for all objects
         assert user.uuid != user2.uuid
 
-    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
     @pytest.mark.parametrize(
         "auto_redact,location,biography",
         [
@@ -184,24 +175,33 @@ class TestPostgresRedaction:
     def test_redact_queryset__auto_redact(
         self,
         user: User,
-        user_anonymiser: UserAnonymiser,
+        user_redacter: UserRedacter,
         auto_redact: bool,
         location: str,
         biography: str,
     ) -> None:
-        user_anonymiser.redact_queryset(User.objects.all(), auto_redact=auto_redact)
+        user_redacter.redact_queryset(User.objects.all(), auto_redact=auto_redact)
         user.refresh_from_db()
         # auto-redacted fields
         assert user.location == location
         assert user.biography == biography
 
-    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
     def test_redact_queryset__field_overrides(
         self,
         user: User,
-        user_anonymiser: UserAnonymiser,
+        user_redacter: UserRedacter,
     ) -> None:
-        user_anonymiser.redact_queryset(User.objects.all(), location="Area 51")
+        user_redacter.redact_queryset(User.objects.all(), location="Area 51")
         user.refresh_from_db()
-        # auto-redacted fields
         assert user.location == "Area 51"
+
+    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
+    def test_redact_queryset__field_overrides__postgres(
+        self,
+        user: User,
+        user_redacter: UserRedacter,
+    ) -> None:
+        uuid = user.uuid
+        user_redacter.redact_queryset(User.objects.all(), uuid=GenerateUuid4())
+        user.refresh_from_db()
+        assert user.uuid != uuid

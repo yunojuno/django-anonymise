@@ -1,7 +1,7 @@
 import pytest
 from django.conf import settings
 
-from tests.anon import UserAnonymiser
+from tests.anonymisers import UserAnonymiser, UserRedacter
 from tests.models import User
 
 IS_POSTGRES = (
@@ -35,3 +35,8 @@ def user2() -> User:
 @pytest.fixture
 def user_anonymiser() -> UserAnonymiser:
     return UserAnonymiser()
+
+
+@pytest.fixture
+def user_redacter() -> UserRedacter:
+    return UserRedacter()
