@@ -66,9 +66,15 @@ class BaseAnonymiser:
     # Override with the model to be anonymised
     model: type[models.Model]
 
+    # Set to False to disable auto-redaction of text fields
+    auto_redact: bool = True
+
+    # List of field names to exclude from auto-redaction
+    auto_redact_exclude: list[str] = []
+
     # field_name: redaction_value. redaction_value can be a static value
     # or a db function, e.g. F("field_name") or Value("static value").
-    field_redactions: dict[str, Any] = {}
+    custom_field_redactions: dict[str, Any] = {}
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
@@ -157,6 +163,22 @@ class BaseAnonymiser:
         """
         pass
 
+    def is_field_auto_redactable(self, field: models.Field) -> bool:
+        """
+        Return True if the field should be auto-redacted.
+
+        Currently this includes text fields that are not choices, primary
+        keys, unique fields, or in the auto_redact_exclude list.
+
+        """
+        return (
+            isinstance(field, (models.CharField, models.TextField))
+            and not field.choices
+            and not field.primary_key
+            and not getattr(field, "unique", False)
+            and field.name not in self.auto_redact_exclude
+        )
+
     def auto_field_redactions(self) -> dict[str, str]:
         """
         Return a dict of redaction_values for all text fields.
@@ -177,16 +199,13 @@ class BaseAnonymiser:
         return {
             f.name: _max_length(f) * "X"
             for f in self.get_model_fields()
-            if isinstance(f, (models.CharField, models.TextField))
-            and not f.choices
-            and not f.primary_key
-            and not getattr(f, "unique", False)
+            if self.is_field_auto_redactable(f)
         }
 
     def redact_queryset(
         self,
         queryset: models.QuerySet[models.Model],
-        auto_redact: bool = False,
+        auto_redact: bool = auto_redact,
         **field_overrides: Any,
     ) -> int:
         """
@@ -209,6 +228,6 @@ class BaseAnonymiser:
         redactions: dict[str, Any] = {}
         if auto_redact:
             redactions.update(self.auto_field_redactions())
-        redactions.update(self.field_redactions)
+        redactions.update(self.custom_field_redactions)
         redactions.update(field_overrides)
         return queryset.update(**redactions)
