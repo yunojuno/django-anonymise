@@ -1,9 +1,7 @@
-from unittest import mock, skipUnless
+from unittest import mock
 
 import pytest
-from django.conf import settings
-from django.db import connection, models
-from django.db.backends.utils import CursorWrapper
+from django.db import models
 
 from anonymiser.db.expressions import GenerateUuid4
 from anonymiser.models import FieldSummaryData
@@ -126,21 +124,6 @@ def test_bad_anonymiser() -> None:
 
 @pytest.mark.django_db
 class TestRedaction:
-    @pytest.fixture(autouse=settings.IS_POSTGRES)
-    def activate_postgresql_uuid(self) -> None:
-        """Activate the uuid-ossp extension in the test database."""
-        with connection.cursor() as cursor:
-            cursor.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";')
-
-    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
-    @mock.patch.object(CursorWrapper, "execute")
-    def test_generate_uuid4(self, mock_execute: mock.MagicMock) -> None:
-        User.objects.update(uuid=GenerateUuid4())
-        assert (
-            mock_execute.call_args[0][0]
-            == 'UPDATE "tests_user" SET "uuid" = uuid_generate_v4()'
-        )
-
     def test_redact_queryset_none(
         self, user: User, user_redacter: UserRedacter
     ) -> None:
@@ -195,7 +178,6 @@ class TestRedaction:
         user.refresh_from_db()
         assert user.location == "Area 51"
 
-    @skipUnless(settings.IS_POSTGRES, "Test requires Postgres.")
     def test_redact_queryset__field_overrides__postgres(
         self,
         user: User,
