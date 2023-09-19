@@ -4,7 +4,7 @@ import pytest
 from django.db import connection
 from django.db.backends.utils import CursorWrapper
 
-from anonymiser.db.expressions import GenerateUuid4
+from anonymiser.db.functions import GenerateUuid4
 
 from .models import User
 
@@ -14,7 +14,7 @@ from .models import User
     "vendor,sql_func",
     [
         ("sqlite", "HEX(RANDOMBLOB(16))"),
-        ("postgresql", "get_random_uuid()"),
+        ("postgresql", "gen_random_uuid()"),
     ],
 )
 @mock.patch.object(CursorWrapper, "execute")

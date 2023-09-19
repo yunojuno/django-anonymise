@@ -3,7 +3,7 @@ from unittest import mock
 import pytest
 from django.db import models
 
-from anonymiser.db.expressions import GenerateUuid4
+from anonymiser.db.functions import GenerateUuid4
 from anonymiser.models import FieldSummaryData
 
 from .anonymisers import BadUserAnonymiser, UserAnonymiser, UserRedacter
