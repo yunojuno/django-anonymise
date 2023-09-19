@@ -26,7 +26,7 @@ class BadUserAnonymiser(BaseAnonymiser):
 class UserRedacter(BaseAnonymiser):
     model = User
 
-    field_redactions = {
+    custom_field_redactions = {
         "first_name": "FIRST_NAME",
         "last_name": "LAST_NAME",
         "email": Concat(Value("user_"), F("id"), Value("@example.com")),
