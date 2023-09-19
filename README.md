@@ -42,7 +42,7 @@ a new anonymiser that splits out each field:
 ```python
 # anonymisers.py
 @register_anonymiser
-class UserAnonymiser(BaseAnonymiser):
+class UserAnonymiser(ModelAnonymiser):
     model = User
 
     def anonymise_first_name(self, obj: User) -> None:

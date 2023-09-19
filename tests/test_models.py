@@ -92,30 +92,6 @@ class TestAnonymisableUserModel:
         assert user_anonymiser.anonymise_queryset(User.objects.none()) == 0
         assert user_anonymiser.anonymise_queryset(User.objects.all()) == 1
 
-    @mock.patch.object(UserAnonymiser, "get_model_fields")
-    def test_auto_redact(
-        self, mock_get_fields: mock.Mock, user_anonymiser: UserAnonymiser
-    ) -> None:
-        mock_get_fields.return_value = [
-            # redact to 255 chars
-            models.CharField(name="char_field", max_length=255),
-            # redact to 400 chars
-            models.TextField(name="text_field"),
-            # don't redact (choices)
-            models.CharField(name="choices", max_length=255, choices=[("a", "A")]),
-            # don't redact (unique)
-            models.CharField(name="unique", max_length=255, unique=True),
-            # don't redact (primary key)
-            models.CharField(name="primary_key", max_length=255, primary_key=True),
-            # don't redact (IntegerField, DateField, etc)
-            models.IntegerField(name="integer_field"),
-            models.DateField(name="date_field"),
-        ]
-        assert user_anonymiser.auto_field_redactions() == {
-            "char_field": 255 * "X",
-            "text_field": 400 * "X",
-        }
-
 
 def test_bad_anonymiser() -> None:
     with pytest.raises(AttributeError):
@@ -187,3 +163,27 @@ class TestRedaction:
         user_redacter.redact_queryset(User.objects.all(), uuid=GenerateUuid4())
         user.refresh_from_db()
         assert user.uuid != uuid
+
+    @mock.patch.object(UserRedacter, "get_model_fields")
+    def test_auto_redact(
+        self, mock_get_fields: mock.Mock, user_redacter: UserRedacter
+    ) -> None:
+        mock_get_fields.return_value = [
+            # redact to 255 chars
+            models.CharField(name="char_field", max_length=255),
+            # redact to 400 chars
+            models.TextField(name="text_field"),
+            # don't redact (choices)
+            models.CharField(name="choices", max_length=255, choices=[("a", "A")]),
+            # don't redact (unique)
+            models.CharField(name="unique", max_length=255, unique=True),
+            # don't redact (primary key)
+            models.CharField(name="primary_key", max_length=255, primary_key=True),
+            # don't redact (IntegerField, DateField, etc)
+            models.IntegerField(name="integer_field"),
+            models.DateField(name="date_field"),
+        ]
+        assert user_redacter.auto_field_redactions() == {
+            "char_field": 255 * "X",
+            "text_field": 400 * "X",
+        }
