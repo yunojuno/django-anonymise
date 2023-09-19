@@ -33,7 +33,7 @@ jobs:
           tox
 
   test:
-    name: Run tests (SQLite)
+    name: Run tests
     runs-on: ubuntu-latest
 
     strategy:
@@ -58,37 +58,39 @@ jobs:
           pip install tox
           tox
 
-  test-pg:
-    name: Run tests (PostgreSQL)
-    runs-on: ubuntu-latest
+# HRB: no longer required (SQLite supports UUID generation), but keeping
+# around for future self.
+#   test-pg:
+#     name: Run tests (PostgreSQL)
+#     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres
-        env:
-          POSTGRES_DB: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        # Set health checks to wait until postgres has started
-        options: >-
-          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+#     services:
+#       postgres:
+#         image: postgres
+#         env:
+#           POSTGRES_DB: postgres
+#           POSTGRES_USER: postgres
+#           POSTGRES_PASSWORD: postgres
+#         ports:
+#           - 5432:5432
+#         # Set health checks to wait until postgres has started
+#         options: >-
+#           --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
 
-    env:
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
+#     env:
+#       DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres
 
-    steps:
-      - name: Check out the repository
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Check out the repository
+#         uses: actions/checkout@v3
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+#       - name: Set up Python 3.11
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: "3.11"
 
-      - name: Install tox
-        run: pip install tox
+#       - name: Install tox
+#         run: pip install tox
 
-      - name: Run tox (pg-only)
-        run: tox -e pg-only
+#       - name: Run tox (pg-only)
+#         run: tox -e pg-only
