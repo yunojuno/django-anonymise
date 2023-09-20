@@ -2,14 +2,15 @@ from django.db.models import F, Value
 from django.db.models.functions import Concat
 
 from anonymiser.decorators import register_anonymiser
-from anonymiser.models import AnonymiserBase, RedacterBase
+from anonymiser.models import AnonymiserBase, ModelAnonymiser, RedacterBase
 
 from .models import User
 
 
 @register_anonymiser
-class UserAnonymiser(AnonymiserBase):
+class UserAnonymiser(ModelAnonymiser):
     model = User
+    auto_redact = True
 
     def anonymise_first_name(self, obj: User) -> None:
         obj.first_name = "Anonymous"

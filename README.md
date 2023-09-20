@@ -25,6 +25,30 @@ up-to-date.
 The anonymisation itself doesn't change - it's just shifting the code
 around.
 
+## Redaction vs. Anonymisation
+
+This library contains two flavours of anonymisation - Redaction, and
+Anonymisation. The two differ in how the data is overwritten:
+
+Type | Implementation | Performance | Data
+--- | --- | --- | ---
+Redaction | SQL | Fast | Table level
+Anonymisation | Python | Slow | Row level
+
+### Redaction
+
+Redaction is implemented as a single SQL `update` statement that wipes
+an entire table in one go. It's very fast, but it's limited in the sense
+that it cannot produce realistic data. In fact it may well render your
+application unusable. It is recommended as the first step in data
+anonymisation.
+
+### Anonymisation
+
+Anonymisation is an row-level operation that iterates over a
+queryset and updates each object in turn. The main advantage is that
+post-anonymisation you will have realistic, usable, data.
+
 ## Usage
 
 As an example - this is a hypothetical User model's anonymisation today:
