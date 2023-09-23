@@ -4,41 +4,44 @@ import pytest
 from django.db import models
 
 from anonymiser.db.functions import GenerateUuid4
-from anonymiser.models import FieldSummaryData
+from anonymiser.models import ModelFieldSummary
 
 from .anonymisers import BadUserAnonymiser, UserAnonymiser, UserRedacter
 from .models import User
 
 
 def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
+    f = lambda field_name: User._meta.get_field(field_name)
     assert user_anonymiser.get_model_field_summary() == [
-        FieldSummaryData(User._meta.get_field("id"), False),
-        FieldSummaryData(User._meta.get_field("password"), False),
-        FieldSummaryData(User._meta.get_field("last_login"), False),
-        FieldSummaryData(User._meta.get_field("is_superuser"), False),
-        FieldSummaryData(User._meta.get_field("username"), False),
-        FieldSummaryData(User._meta.get_field("first_name"), True),
-        FieldSummaryData(User._meta.get_field("last_name"), False),
-        FieldSummaryData(User._meta.get_field("email"), False),
-        FieldSummaryData(User._meta.get_field("is_staff"), False),
-        FieldSummaryData(User._meta.get_field("is_active"), False),
-        FieldSummaryData(User._meta.get_field("date_joined"), False),
-        FieldSummaryData(User._meta.get_field("uuid"), False),
-        FieldSummaryData(User._meta.get_field("location"), False),
-        FieldSummaryData(User._meta.get_field("biography"), False),
-        FieldSummaryData(User._meta.get_field("date_of_birth"), False),
-        FieldSummaryData(User._meta.get_field("groups"), False),
-        FieldSummaryData(User._meta.get_field("user_permissions"), False),
+        ModelFieldSummary(User, f("id"), user_anonymiser),
+        ModelFieldSummary(User, f("password"), user_anonymiser),
+        ModelFieldSummary(User, f("last_login"), user_anonymiser),
+        ModelFieldSummary(User, f("is_superuser"), user_anonymiser),
+        ModelFieldSummary(User, f("username"), user_anonymiser),
+        ModelFieldSummary(User, f("first_name"), user_anonymiser),
+        ModelFieldSummary(User, f("last_name"), user_anonymiser),
+        ModelFieldSummary(User, f("email"), user_anonymiser),
+        ModelFieldSummary(User, f("is_staff"), user_anonymiser),
+        ModelFieldSummary(User, f("is_active"), user_anonymiser),
+        ModelFieldSummary(User, f("date_joined"), user_anonymiser),
+        ModelFieldSummary(User, f("uuid"), user_anonymiser),
+        ModelFieldSummary(User, f("location"), user_anonymiser),
+        ModelFieldSummary(User, f("biography"), user_anonymiser),
+        ModelFieldSummary(User, f("date_of_birth"), user_anonymiser),
+        ModelFieldSummary(User, f("groups"), user_anonymiser),
+        ModelFieldSummary(User, f("user_permissions"), user_anonymiser),
     ]
 
 
 def test_model_fields_data(user_anonymiser: UserAnonymiser) -> None:
-    fsd = FieldSummaryData(User._meta.get_field("first_name"), True)
+    fsd = ModelFieldSummary(User, User._meta.get_field("first_name"), user_anonymiser)
     assert fsd.app == "tests"
     assert fsd.model == "User"
     assert fsd.field_name == "first_name"
     assert fsd.field_type == "CharField"
-    assert fsd.is_anonymisable is True
+    assert fsd.is_anonymised is True
+    assert fsd.is_redacted is True
+    assert fsd.redaction_strategy == user_anonymiser.FieldRedactionStratgy.AUTO
 
 
 @pytest.mark.django_db
@@ -47,13 +50,13 @@ class TestAnonymisableUserModel:
         self, user: User, user_anonymiser: UserAnonymiser
     ) -> None:
         with pytest.raises(NotImplementedError):
-            user_anonymiser.anonymise_field(user, "last_name")
+            user_anonymiser.anonymise_field(user, User._meta.get_field("last_name"))
 
     def test_anonymise_first_name_field(
         self, user: User, user_anonymiser: UserAnonymiser
     ) -> None:
         assert user.first_name == "fred"
-        user_anonymiser.anonymise_field(user, "first_name")
+        user_anonymiser.anonymise_field(user, User._meta.get_field("first_name"))
         assert user.first_name == "Anonymous"
 
     def test_anonymise(self, user: User, user_anonymiser: UserAnonymiser) -> None:

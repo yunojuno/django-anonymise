@@ -12,6 +12,10 @@ class UserAnonymiser(ModelAnonymiser):
     model = User
     auto_redact = True
 
+    custom_field_redactions = {
+        "first_name": "FIRST_NAME",
+    }
+
     def anonymise_first_name(self, obj: User) -> None:
         obj.first_name = "Anonymous"
 

@@ -1,10 +1,10 @@
-from .models import AnonymiserBase, RedacterBase
+from .models import ModelAnonymiser
 from .registry import register
 
 
 def register_anonymiser(
-    anonymiser: type[AnonymiserBase | RedacterBase],
-) -> type[AnonymiserBase | RedacterBase]:
+    anonymiser: type[ModelAnonymiser],
+) -> type[ModelAnonymiser]:
     """Add {model: Anonymiser} to the global registry."""
     register(anonymiser)
     return anonymiser

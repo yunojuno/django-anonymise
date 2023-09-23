@@ -20,13 +20,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3 :: Only",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
 packages = [{ include = "anonymiser" }]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = "^3.11"
 django = "^3.2 || ^4.0 || ^5.0"
 # optional - used for testing with Postgres
 psycopg2-binary = { version = "*", optional = true }
