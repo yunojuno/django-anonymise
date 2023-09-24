@@ -44,6 +44,27 @@ def test_model_fields_data(user_anonymiser: UserAnonymiser) -> None:
     assert mfs.redaction_strategy == user_anonymiser.FieldRedactionStratgy.CUSTOM
 
 
+@pytest.mark.parametrize(
+    "field_name,strategy",
+    [
+        ("first_name", UserAnonymiser.FieldRedactionStratgy.CUSTOM),
+        # non-custom redactions of char fields
+        ("last_name", UserAnonymiser.FieldRedactionStratgy.AUTO),
+        ("biography", UserAnonymiser.FieldRedactionStratgy.AUTO),
+        ("location", UserAnonymiser.FieldRedactionStratgy.AUTO),
+        # date / UUID not redacted automatically
+        ("date_of_birth", UserAnonymiser.FieldRedactionStratgy.NONE),
+        ("uuid", UserAnonymiser.FieldRedactionStratgy.NONE),
+    ],
+)
+def test_model_fields_redaction_strategy(
+    field_name: str, strategy: str, user_anonymiser: UserAnonymiser
+) -> None:
+    field = User._meta.get_field(field_name)
+    mfs = ModelFieldSummary(User, field, user_anonymiser)
+    assert mfs.redaction_strategy == strategy
+
+
 @pytest.mark.django_db
 class TestAnonymisableUserModel:
     def test_anonymise_not_implemented(
