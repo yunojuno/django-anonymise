@@ -34,14 +34,14 @@ def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
 
 
 def test_model_fields_data(user_anonymiser: UserAnonymiser) -> None:
-    fsd = ModelFieldSummary(User, User._meta.get_field("first_name"), user_anonymiser)
-    assert fsd.app == "tests"
-    assert fsd.model == "User"
-    assert fsd.field_name == "first_name"
-    assert fsd.field_type == "CharField"
-    assert fsd.is_anonymised is True
-    assert fsd.is_redacted is True
-    assert fsd.redaction_strategy == user_anonymiser.FieldRedactionStratgy.AUTO
+    mfs = ModelFieldSummary(User, User._meta.get_field("first_name"), user_anonymiser)
+    assert mfs.app == "tests"
+    assert mfs.model == "User"
+    assert mfs.field_name == "first_name"
+    assert mfs.field_type == "CharField"
+    assert mfs.is_anonymised is True
+    assert mfs.is_redacted is True
+    assert mfs.redaction_strategy == user_anonymiser.FieldRedactionStratgy.CUSTOM
 
 
 @pytest.mark.django_db

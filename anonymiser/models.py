@@ -175,8 +175,8 @@ class RedacterBase(_ModelBase):
     custom_field_redactions: dict[str, Any] = {}
 
     class FieldRedactionStratgy(StrEnum):
-        AUTO = "auto"
-        CUSTOM = "custom"
+        AUTO = "AUTO"
+        CUSTOM = "CUSTOM"
         NONE = ""
 
     def is_field_redaction_auto(self, field: models.Field) -> bool:
