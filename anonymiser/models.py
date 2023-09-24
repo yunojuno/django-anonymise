@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from collections import namedtuple
-from dataclasses import dataclass
-from enum import StrEnum
+from enum import StrEnum  # 3.11 only
 from typing import Any, Iterator, TypeAlias
 
 from django.db import models
@@ -11,66 +9,21 @@ from django.db import models
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
 
-# Store info about the field and whether it is anonymisable
-FieldSummaryTuple = namedtuple(
-    "FieldSummaryTuple", ("app", "model", "field", "type", "is_anonymisable")
-)
-
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ModelFieldSummary:
+def get_model_fields(model: type[models.Model]) -> list[models.Field]:
     """
-    Store info about the field and whether it is anonymisable.
+    Return a list of fields on the model.
 
-    This is used to generate a summary of the fields on a model, and how
-    they are anonymised / redacted - used to generate the documentation.
+    Removes any related_name fields.
 
     """
-
-    # python rejects "model" as a field name, so we use "app_model"
-    app_model: models.Model
-    model_field: models.Field
-    anonymiser: ModelAnonymiser | None
-
-    @property
-    def model_label(self) -> str:
-        return self.app_model._meta.label
-
-    @property
-    def app(self) -> str:
-        return self.app_model._meta.app_label
-
-    @property
-    def model(self) -> str:
-        return self.app_model._meta.object_name or ""
-
-    @property
-    def field_name(self) -> str:
-        return self.model_field.name
-
-    @property
-    def field_type(self) -> str:
-        return self.model_field.__class__.__name__
-
-    @property
-    def is_anonymised(self) -> bool:
-        if self.anonymiser:
-            return self.anonymiser.is_field_anonymised(self.model_field)
-        return False
-
-    @property
-    def is_redacted(self) -> bool:
-        if self.anonymiser:
-            return self.anonymiser.is_field_redacted(self.model_field)
-        return False
-
-    @property
-    def redaction_strategy(self) -> RedacterBase.FieldRedactionStratgy:
-        if self.anonymiser:
-            return self.anonymiser.field_redaction_strategy(self.model_field)
-        return RedacterBase.FieldRedactionStratgy.NONE
+    return [
+        f
+        for f in model._meta.get_fields()
+        if not isinstance(f, models.ForeignObjectRel)
+    ]
 
 
 class _ModelBase:
@@ -81,11 +34,7 @@ class _ModelBase:
         """Return a list of fields on the model."""
         if not self.model:
             raise NotImplementedError("model must be set")
-        return [
-            f
-            for f in self.model._meta.get_fields()
-            if not isinstance(f, models.ForeignObjectRel)
-        ]
+        return get_model_fields(self.model)
 
 
 class AnonymiserBase(_ModelBase):
@@ -277,10 +226,3 @@ class ModelAnonymiser(AnonymiserBase, RedacterBase):
     for models that do not need to be anonymised.
 
     """
-
-    def get_model_field_summary(self) -> list[ModelFieldSummary]:
-        """Return a list of ModelFieldSummary objects for the model."""
-        return [
-            ModelFieldSummary(app_model=self.model, model_field=f, anonymiser=self)
-            for f in self.get_model_fields()
-        ]
