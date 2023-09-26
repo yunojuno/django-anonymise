@@ -177,3 +177,17 @@ class TestRedaction:
             "char_field": 255 * "X",
             "text_field": 400 * "X",
         }
+
+
+def test_model_fields_data() -> None:
+    mfs = ModelFieldSummary(User._meta.get_field("first_name"))
+    assert mfs.app_label == "tests"
+    assert mfs.model == User
+    assert mfs.label == "tests.User"
+    assert mfs.model_name == "User"
+    assert mfs.field_name == "first_name"
+    assert mfs.field_type == "CharField"
+    assert isinstance(mfs.anonymiser, UserAnonymiser)
+    assert mfs.is_anonymised is True
+    assert mfs.is_redacted is True
+    assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStrategy.CUSTOM

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
 from enum import StrEnum  # 3.11 only
 from typing import Any, Iterator, TypeAlias
@@ -226,3 +227,65 @@ class ModelAnonymiser(AnonymiserBase, RedacterBase):
     for models that do not need to be anonymised.
 
     """
+
+
+@dataclasses.dataclass
+class ModelFieldSummary:
+    """
+    Store info about the field and whether it is anonymisable.
+
+    This is used to generate a summary of the fields on a model, and how
+    they are anonymised / redacted - used to generate the documentation.
+
+    """
+
+    field: models.Field
+    anonymiser: ModelAnonymiser | None = dataclasses.field(init=False)
+
+    def __post_init__(self) -> None:
+        # circ import
+        from .registry import get_model_anonymiser
+
+        self.anonymiser = get_model_anonymiser(self.model)
+
+    @property
+    def model(self) -> type[models.Model]:
+        return self.field.model
+
+    @property
+    def app_label(self) -> str:
+        return self.model._meta.app_label
+
+    @property
+    def model_name(self) -> str:
+        return self.label.split(".")[-1]
+
+    @property
+    def label(self) -> str:
+        return self.model._meta.label
+
+    @property
+    def field_name(self) -> str:
+        return self.field.name
+
+    @property
+    def field_type(self) -> str:
+        return self.field.__class__.__name__
+
+    @property
+    def is_anonymised(self) -> bool:
+        if self.anonymiser:
+            return self.anonymiser.is_field_anonymised(self.field)
+        return False
+
+    @property
+    def is_redacted(self) -> bool:
+        if self.anonymiser:
+            return self.anonymiser.is_field_redacted(self.field)
+        return False
+
+    @property
+    def redaction_strategy(self) -> ModelAnonymiser.FieldRedactionStrategy:
+        if self.anonymiser:
+            return self.anonymiser.field_redaction_strategy(self.field)
+        return ModelAnonymiser.FieldRedactionStrategy.NONE
