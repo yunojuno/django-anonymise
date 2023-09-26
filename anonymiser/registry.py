@@ -33,7 +33,7 @@ class Registry(dict):
             self[model] = anonymiser
 
 
-def register_model_anonoymiser(anonymiser: type[ModelAnonymiser]) -> None:
+def register_model_anonymiser(anonymiser: type[ModelAnonymiser]) -> None:
     _registry.register_anonymiser(anonymiser)
 
 
@@ -42,6 +42,11 @@ def get_model_anonymiser(model: type[models.Model]) -> ModelAnonymiser | None:
     if anonymiser := _registry.get(model):
         return anonymiser()
     return None
+
+
+def get_anonymisable_models() -> list[type[models.Model]]:
+    """Return list of all models that have an anonymiser."""
+    return _registry.anonymisable_models()
 
 
 def get_all_model_fields(
