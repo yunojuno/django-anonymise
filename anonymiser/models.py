@@ -189,7 +189,7 @@ class RedacterBase(_ModelBase):
     def redact_queryset(
         self,
         queryset: models.QuerySet[models.Model],
-        auto_redact: bool = auto_redact,
+        auto_redact_override: bool | None = None,
         **field_overrides: Any,
     ) -> int:
         """
@@ -210,7 +210,10 @@ class RedacterBase(_ModelBase):
 
         """
         redactions: dict[str, Any] = {}
-        if auto_redact:
+        auto = (
+            self.auto_redact if auto_redact_override is None else auto_redact_override
+        )
+        if auto:
             redactions.update(self.auto_field_redactions())
         redactions.update(self.custom_field_redactions)
         redactions.update(field_overrides)

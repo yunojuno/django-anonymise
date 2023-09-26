@@ -115,7 +115,7 @@ class TestRedaction:
         assert user.uuid != user2.uuid
 
     @pytest.mark.parametrize(
-        "auto_redact,location,biography",
+        "override,location,biography",
         [
             (True, 255 * "X", 400 * "X"),
             (False, "London", "I am a test user"),
@@ -125,11 +125,11 @@ class TestRedaction:
         self,
         user: User,
         user_redacter: UserRedacter,
-        auto_redact: bool,
+        override: bool,
         location: str,
         biography: str,
     ) -> None:
-        user_redacter.redact_queryset(User.objects.all(), auto_redact=auto_redact)
+        user_redacter.redact_queryset(User.objects.all(), auto_redact_override=override)
         user.refresh_from_db()
         # auto-redacted fields
         assert user.location == location
