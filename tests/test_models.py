@@ -10,30 +10,17 @@ from .anonymisers import BadUserAnonymiser, UserAnonymiser, UserRedacter
 from .models import User
 
 
-# def test_model_fields_data() -> None:
-#     mfs = ModelFieldSummary(User._meta.get_field("first_name"))
-#     assert mfs.app_label == "tests"
-#     assert mfs.model == User
-#     assert mfs.model_label == "tests.User"
-#     assert mfs.field_name == "first_name"
-#     assert mfs.field_type == "CharField"
-#     assert mfs.anonymiser.__class__ == UserAnonymiser
-#     assert mfs.is_anonymised is True
-#     assert mfs.is_redacted is True
-#     assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStratgy.CUSTOM
-
-
 @pytest.mark.parametrize(
     "field_name,strategy",
     [
-        ("first_name", UserAnonymiser.FieldRedactionStratgy.CUSTOM),
+        ("first_name", UserAnonymiser.FieldRedactionStrategy.CUSTOM),
         # non-custom redactions of char fields
-        ("last_name", UserAnonymiser.FieldRedactionStratgy.AUTO),
-        ("biography", UserAnonymiser.FieldRedactionStratgy.AUTO),
-        ("location", UserAnonymiser.FieldRedactionStratgy.AUTO),
+        ("last_name", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        ("biography", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        ("location", UserAnonymiser.FieldRedactionStrategy.AUTO),
         # date / UUID not redacted automatically
-        ("date_of_birth", UserAnonymiser.FieldRedactionStratgy.NONE),
-        ("uuid", UserAnonymiser.FieldRedactionStratgy.NONE),
+        ("date_of_birth", UserAnonymiser.FieldRedactionStrategy.NONE),
+        ("uuid", UserAnonymiser.FieldRedactionStrategy.NONE),
     ],
 )
 def test_model_fields_redaction_strategy(

@@ -1,25 +1,21 @@
 from __future__ import annotations
 
 from anonymiser.decorators import register_anonymiser
-from anonymiser.registry import (
-    ModelFieldSummary,
-    _registry,
-    anonymisable_models,
-)
+from anonymiser.registry import ModelFieldSummary, _registry
 
 from .anonymisers import UserAnonymiser
 from .models import User
 
 
 def test_registry() -> None:
-    assert anonymisable_models() == [User]
+    assert list(_registry.keys()) == [User]
 
 
 def test_register_anonymiser() -> None:
     _registry.clear()
-    assert anonymisable_models() == []
-    assert register_anonymiser(UserAnonymiser) == UserAnonymiser
-    assert anonymisable_models() == [User]
+    assert _registry == {}
+    register_anonymiser(UserAnonymiser)
+    assert _registry == {User: UserAnonymiser}
 
 
 def test_model_fields_data() -> None:
@@ -32,4 +28,4 @@ def test_model_fields_data() -> None:
     assert isinstance(mfs.anonymiser, UserAnonymiser)
     assert mfs.is_anonymised is True
     assert mfs.is_redacted is True
-    assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStratgy.CUSTOM
+    assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStrategy.CUSTOM

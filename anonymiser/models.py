@@ -123,7 +123,7 @@ class RedacterBase(_ModelBase):
     # or a db function, e.g. F("field_name") or Value("static value").
     custom_field_redactions: dict[str, Any] = {}
 
-    class FieldRedactionStratgy(StrEnum):
+    class FieldRedactionStrategy(StrEnum):
         AUTO = "AUTO"
         CUSTOM = "CUSTOM"
         NONE = ""
@@ -177,13 +177,13 @@ class RedacterBase(_ModelBase):
             if self.is_field_redaction_auto(f)
         }
 
-    def field_redaction_strategy(self, field: models.Field) -> FieldRedactionStratgy:
+    def field_redaction_strategy(self, field: models.Field) -> FieldRedactionStrategy:
         """Return the FieldRedaction value for a field."""
         if self.is_field_redaction_custom(field):
-            return self.FieldRedactionStratgy.CUSTOM
+            return self.FieldRedactionStrategy.CUSTOM
         if self.is_field_redaction_auto(field):
-            return self.FieldRedactionStratgy.AUTO
-        return self.FieldRedactionStratgy.NONE
+            return self.FieldRedactionStrategy.AUTO
+        return self.FieldRedactionStrategy.NONE
 
     def redact_queryset(
         self,

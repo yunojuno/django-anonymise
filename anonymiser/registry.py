@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import logging
 import threading
@@ -13,50 +15,33 @@ logger = logging.getLogger(__name__)
 
 
 class Registry(dict):
-    pass
+    def anonymisable_models(self) -> list[type[models.Model]]:
+        return [m for m in self.keys() if self[m]]
+
+    def non_anonymisable_models(self) -> list[type[models.Model]]:
+        return [m for m in self.keys() if self[m] is None]
+
+    def is_model_anonymisable(self, model: type[models.Model]) -> bool:
+        return bool(self[model])
+
+    def register_anonymiser(self, anonymiser: type[ModelAnonymiser]) -> None:
+        with lock:
+            if not (model := anonymiser.model):
+                raise ValueError("Anonymiser must have a model attribute set.")
+            if model in self:
+                raise ValueError(f"Anonymiser for {model} already registered")
+            logging.debug("Adding anonymiser for %s to registry", model._meta.label)
+            self[model] = anonymiser
 
 
-# global registry
-_registry = Registry()
+def register_model_anonoymiser(anonymiser: type[ModelAnonymiser]) -> None:
+    _registry.register_anonymiser(anonymiser)
 
 
-def _register(anonymiser: type[ModelAnonymiser]) -> None:
-    if not (model := anonymiser.model):
-        raise ValueError("Anonymiser must have a model attribute set.")
-    if model in _registry:
-        raise ValueError(f"Anonymiser for {model} already registered")
-    logging.debug("Adding anonymiser for %s to registry", model._meta.label)
-    _registry[model] = anonymiser
-
-
-def register(anonymiser: type[ModelAnonymiser]) -> None:
-    """Add {model: Anonymiser} to the global registry."""
-    with lock:
-        _register(anonymiser)
-
-
-def anonymisable_models() -> list[type[models.Model]]:
-    with lock:
-        return list(_registry.keys())
-
-
-def not_anonymisable_models() -> list[type[models.Model]]:
-    with lock:
-        return [m for m in apps.get_models() if m not in _registry]
-
-
-def anonymisers() -> list[type[ModelAnonymiser]]:
-    with lock:
-        return list(_registry.values())
-
-
-def get_model_anonymiser(
-    model: type[models.Model],
-) -> ModelAnonymiser | None:
+def get_model_anonymiser(model: type[models.Model]) -> ModelAnonymiser | None:
     """Return newly instantiated anonymiser for model."""
-    with lock:
-        if anonymiser := _registry.get(model):
-            return anonymiser()
+    if anonymiser := _registry.get(model):
+        return anonymiser()
     return None
 
 
@@ -113,10 +98,10 @@ class ModelFieldSummary:
         return False
 
     @property
-    def redaction_strategy(self) -> ModelAnonymiser.FieldRedactionStratgy:
+    def redaction_strategy(self) -> ModelAnonymiser.FieldRedactionStrategy:
         if self.anonymiser:
             return self.anonymiser.field_redaction_strategy(self.field)
-        return ModelAnonymiser.FieldRedactionStratgy.NONE
+        return ModelAnonymiser.FieldRedactionStrategy.NONE
 
 
 def get_all_model_fields(
@@ -142,3 +127,7 @@ def get_all_model_fields(
         # sort fields by type then name - easier to scan.
         output[m._meta.label].sort(key=lambda d: f"{d.field_type}.{d.field_name}")
     return dict(output)
+
+
+# Registry object - initialised in init_registry()
+_registry: Registry = Registry()
