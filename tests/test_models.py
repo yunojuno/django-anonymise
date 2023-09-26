@@ -4,41 +4,31 @@ import pytest
 from django.db import models
 
 from anonymiser.db.functions import GenerateUuid4
-from anonymiser.models import FieldSummaryData
+from anonymiser.registry import ModelFieldSummary
 
 from .anonymisers import BadUserAnonymiser, UserAnonymiser, UserRedacter
 from .models import User
 
 
-def test_model_fields_summary(user_anonymiser: UserAnonymiser) -> None:
-    assert user_anonymiser.get_model_field_summary() == [
-        FieldSummaryData(User._meta.get_field("id"), False),
-        FieldSummaryData(User._meta.get_field("password"), False),
-        FieldSummaryData(User._meta.get_field("last_login"), False),
-        FieldSummaryData(User._meta.get_field("is_superuser"), False),
-        FieldSummaryData(User._meta.get_field("username"), False),
-        FieldSummaryData(User._meta.get_field("first_name"), True),
-        FieldSummaryData(User._meta.get_field("last_name"), False),
-        FieldSummaryData(User._meta.get_field("email"), False),
-        FieldSummaryData(User._meta.get_field("is_staff"), False),
-        FieldSummaryData(User._meta.get_field("is_active"), False),
-        FieldSummaryData(User._meta.get_field("date_joined"), False),
-        FieldSummaryData(User._meta.get_field("uuid"), False),
-        FieldSummaryData(User._meta.get_field("location"), False),
-        FieldSummaryData(User._meta.get_field("biography"), False),
-        FieldSummaryData(User._meta.get_field("date_of_birth"), False),
-        FieldSummaryData(User._meta.get_field("groups"), False),
-        FieldSummaryData(User._meta.get_field("user_permissions"), False),
-    ]
-
-
-def test_model_fields_data(user_anonymiser: UserAnonymiser) -> None:
-    fsd = FieldSummaryData(User._meta.get_field("first_name"), True)
-    assert fsd.app == "tests"
-    assert fsd.model == "User"
-    assert fsd.field_name == "first_name"
-    assert fsd.field_type == "CharField"
-    assert fsd.is_anonymisable is True
+@pytest.mark.parametrize(
+    "field_name,strategy",
+    [
+        ("first_name", UserAnonymiser.FieldRedactionStrategy.CUSTOM),
+        # non-custom redactions of char fields
+        ("last_name", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        ("biography", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        ("location", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        # date / UUID not redacted automatically
+        ("date_of_birth", UserAnonymiser.FieldRedactionStrategy.NONE),
+        ("uuid", UserAnonymiser.FieldRedactionStrategy.NONE),
+    ],
+)
+def test_model_fields_redaction_strategy(
+    field_name: str, strategy: str, user_anonymiser: UserAnonymiser
+) -> None:
+    field = User._meta.get_field(field_name)
+    mfs = ModelFieldSummary(field)
+    assert mfs.redaction_strategy == strategy
 
 
 @pytest.mark.django_db
@@ -47,13 +37,13 @@ class TestAnonymisableUserModel:
         self, user: User, user_anonymiser: UserAnonymiser
     ) -> None:
         with pytest.raises(NotImplementedError):
-            user_anonymiser.anonymise_field(user, "last_name")
+            user_anonymiser.anonymise_field(user, User._meta.get_field("last_name"))
 
     def test_anonymise_first_name_field(
         self, user: User, user_anonymiser: UserAnonymiser
     ) -> None:
         assert user.first_name == "fred"
-        user_anonymiser.anonymise_field(user, "first_name")
+        user_anonymiser.anonymise_field(user, User._meta.get_field("first_name"))
         assert user.first_name == "Anonymous"
 
     def test_anonymise(self, user: User, user_anonymiser: UserAnonymiser) -> None:
@@ -91,30 +81,6 @@ class TestAnonymisableUserModel:
     ) -> None:
         assert user_anonymiser.anonymise_queryset(User.objects.none()) == 0
         assert user_anonymiser.anonymise_queryset(User.objects.all()) == 1
-
-    @mock.patch.object(UserAnonymiser, "get_model_fields")
-    def test_auto_redact(
-        self, mock_get_fields: mock.Mock, user_anonymiser: UserAnonymiser
-    ) -> None:
-        mock_get_fields.return_value = [
-            # redact to 255 chars
-            models.CharField(name="char_field", max_length=255),
-            # redact to 400 chars
-            models.TextField(name="text_field"),
-            # don't redact (choices)
-            models.CharField(name="choices", max_length=255, choices=[("a", "A")]),
-            # don't redact (unique)
-            models.CharField(name="unique", max_length=255, unique=True),
-            # don't redact (primary key)
-            models.CharField(name="primary_key", max_length=255, primary_key=True),
-            # don't redact (IntegerField, DateField, etc)
-            models.IntegerField(name="integer_field"),
-            models.DateField(name="date_field"),
-        ]
-        assert user_anonymiser.auto_field_redactions() == {
-            "char_field": 255 * "X",
-            "text_field": 400 * "X",
-        }
 
 
 def test_bad_anonymiser() -> None:
@@ -187,3 +153,41 @@ class TestRedaction:
         user_redacter.redact_queryset(User.objects.all(), uuid=GenerateUuid4())
         user.refresh_from_db()
         assert user.uuid != uuid
+
+    @mock.patch.object(UserRedacter, "get_model_fields")
+    def test_auto_redact(
+        self, mock_get_fields: mock.Mock, user_redacter: UserRedacter
+    ) -> None:
+        mock_get_fields.return_value = [
+            # redact to 255 chars
+            models.CharField(name="char_field", max_length=255),
+            # redact to 400 chars
+            models.TextField(name="text_field"),
+            # don't redact (choices)
+            models.CharField(name="choices", max_length=255, choices=[("a", "A")]),
+            # don't redact (unique)
+            models.CharField(name="unique", max_length=255, unique=True),
+            # don't redact (primary key)
+            models.CharField(name="primary_key", max_length=255, primary_key=True),
+            # don't redact (IntegerField, DateField, etc)
+            models.IntegerField(name="integer_field"),
+            models.DateField(name="date_field"),
+        ]
+        assert user_redacter.auto_field_redactions() == {
+            "char_field": 255 * "X",
+            "text_field": 400 * "X",
+        }
+
+
+def test_model_fields_data() -> None:
+    mfs = ModelFieldSummary(User._meta.get_field("first_name"))
+    assert mfs.app_label == "tests"
+    assert mfs.model == User
+    assert mfs.label == "tests.User"
+    assert mfs.model_name == "User"
+    assert mfs.field_name == "first_name"
+    assert mfs.field_type == "CharField"
+    assert isinstance(mfs.anonymiser, UserAnonymiser)
+    assert mfs.is_anonymised is True
+    assert mfs.is_redacted is True
+    assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStrategy.CUSTOM

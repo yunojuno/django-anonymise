@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import dataclasses
 import logging
-from collections import namedtuple
-from dataclasses import dataclass
+from enum import StrEnum  # 3.11 only
 from typing import Any, Iterator, TypeAlias
 
 from django.db import models
@@ -10,71 +10,36 @@ from django.db import models
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
 
-# Store info about the field and whether it is anonymisable
-FieldSummaryTuple = namedtuple(
-    "FieldSummaryTuple", ("app", "model", "field", "type", "is_anonymisable")
-)
-
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class FieldSummaryData:
-    field: models.Field
-    is_anonymisable: bool
-
-    @property
-    def model_label(self) -> str:
-        return self.field.model._meta.label
-
-    @property
-    def app(self) -> str:
-        return self.field.model._meta.app_label
-
-    @property
-    def model(self) -> str:
-        return self.field.model._meta.object_name or ""
-
-    @property
-    def field_name(self) -> str:
-        return self.field.name
-
-    @property
-    def field_type(self) -> str:
-        return self.field.__class__.__name__
-
-
-def get_field_summary_data(
-    field: models.Field, anonymiser: BaseAnonymiser | None
-) -> FieldSummaryData:
-    if anonymiser:
-        return FieldSummaryData(field, anonymiser.is_field_anonymisable(field.name))
-    return FieldSummaryData(field, False)
-
-
-class BaseAnonymiser:
+def get_model_fields(model: type[models.Model]) -> list[models.Field]:
     """
-    Base class for anonymisation functions.
+    Return a list of fields on the model.
 
-    You can instantiate this class and call the anonymise_object method
-    for any model as a "noop" anonymiser. It will not do anything, but
-    it can be used to summarise field information in a consistent manner
-    for models that do not need to be anonymised.
+    Removes any related_name fields.
 
     """
+    return [
+        f
+        for f in model._meta.get_fields()
+        if not isinstance(f, models.ForeignObjectRel)
+    ]
 
+
+class _ModelBase:
     # Override with the model to be anonymised
     model: type[models.Model]
 
-    # Set to False to disable auto-redaction of text fields
-    auto_redact: bool = True
+    def get_model_fields(self) -> list[models.Field]:
+        """Return a list of fields on the model."""
+        if not self.model:
+            raise NotImplementedError("model must be set")
+        return get_model_fields(self.model)
 
-    # List of field names to exclude from auto-redaction
-    auto_redact_exclude: list[str] = []
 
-    # field_name: redaction_value. redaction_value can be a static value
-    # or a db function, e.g. F("field_name") or Value("static value").
-    custom_field_redactions: dict[str, Any] = {}
+class AnonymiserBase(_ModelBase):
+    """Base class for anonymisation functions."""
 
     def __setattr__(self, __name: str, __value: Any) -> None:
         """
@@ -97,36 +62,18 @@ class BaseAnonymiser:
             )
         super().__setattr__(__name, __value)
 
-    def get_model_fields(self) -> list[models.Field]:
-        """Return a list of fields on the model."""
-        if not self.model:
-            raise NotImplementedError("model must be set")
-        return [
-            f
-            for f in self.model._meta.get_fields()
-            if not isinstance(f, models.ForeignObjectRel)
-        ]
-
-    def get_model_field_summary(self) -> list[FieldSummaryData]:
-        """Return a list of all model fiels and whether they are anonymisable."""
-        return [
-            FieldSummaryData(f, self.is_field_anonymisable(f.name))
-            for f in self.get_model_fields()
-        ]
-
-    def is_field_anonymisable(self, field_name: str) -> bool:
-        return hasattr(self, f"anonymise_{field_name}")
+    def is_field_anonymised(self, field: models.Field) -> bool:
+        return hasattr(self, f"anonymise_{field.name}")
 
     def get_anonymisable_fields(self) -> list[models.Field]:
         """Return a list of fields on the model that are anonymisable."""
-        return [
-            f for f in self.get_model_fields() if self.is_field_anonymisable(f.name)
-        ]
+        return [f for f in self.get_model_fields() if self.is_field_anonymised(f)]
 
     def anonymise_field(
-        self, obj: models.Model, field_name: str
+        self, obj: models.Model, field: models.Field
     ) -> AnonymisationResult:
         """Anonymise a single field on the model instance."""
+        field_name = field.name
         if not (anon_func := getattr(self, f"anonymise_{field_name}", None)):
             raise NotImplementedError(
                 f"Anonymiser function 'anonymise_{field_name}' not implemented"
@@ -140,7 +87,7 @@ class BaseAnonymiser:
         """Anonymise the model instance (NOT THREAD SAFE)."""
         output = {}
         for field in self.get_anonymisable_fields():
-            output[field.name] = self.anonymise_field(obj, field.name)
+            output[field.name] = self.anonymise_field(obj, field)
         self.post_anonymise_object(obj, **output)
 
     def anonymise_queryset(self, queryset: Iterator[models.Model]) -> int:
@@ -163,7 +110,26 @@ class BaseAnonymiser:
         """
         pass
 
-    def is_field_auto_redactable(self, field: models.Field) -> bool:
+
+class RedacterBase(_ModelBase):
+    """Base class for redaction functions."""
+
+    # Set to False to disable auto-redaction of text fields
+    auto_redact: bool = True
+
+    # List of field names to exclude from auto-redaction
+    auto_redact_exclude: list[str] = []
+
+    # field_name: redaction_value. redaction_value can be a static value
+    # or a db function, e.g. F("field_name") or Value("static value").
+    custom_field_redactions: dict[str, Any] = {}
+
+    class FieldRedactionStrategy(StrEnum):
+        AUTO = "AUTO"
+        CUSTOM = "CUSTOM"
+        NONE = ""
+
+    def is_field_redaction_auto(self, field: models.Field) -> bool:
         """
         Return True if the field should be auto-redacted.
 
@@ -177,6 +143,16 @@ class BaseAnonymiser:
             and not field.primary_key
             and not getattr(field, "unique", False)
             and field.name not in self.auto_redact_exclude
+        )
+
+    def is_field_redaction_custom(self, field: models.Field) -> bool:
+        """Return True if the field has custom redaction."""
+        return field.name in self.custom_field_redactions
+
+    def is_field_redacted(self, field: models.Field) -> bool:
+        """Return True if the field is redacted."""
+        return self.is_field_redaction_auto(field) or self.is_field_redaction_custom(
+            field
         )
 
     def auto_field_redactions(self) -> dict[str, str]:
@@ -199,8 +175,16 @@ class BaseAnonymiser:
         return {
             f.name: _max_length(f) * "X"
             for f in self.get_model_fields()
-            if self.is_field_auto_redactable(f)
+            if self.is_field_redaction_auto(f)
         }
+
+    def field_redaction_strategy(self, field: models.Field) -> FieldRedactionStrategy:
+        """Return the FieldRedaction value for a field."""
+        if self.is_field_redaction_custom(field):
+            return self.FieldRedactionStrategy.CUSTOM
+        if self.is_field_redaction_auto(field):
+            return self.FieldRedactionStrategy.AUTO
+        return self.FieldRedactionStrategy.NONE
 
     def redact_queryset(
         self,
@@ -231,3 +215,77 @@ class BaseAnonymiser:
         redactions.update(self.custom_field_redactions)
         redactions.update(field_overrides)
         return queryset.update(**redactions)
+
+
+class ModelAnonymiser(AnonymiserBase, RedacterBase):
+    """
+    Base class for anonymisation functions.
+
+    You can instantiate this class and call the anonymise_object method
+    for any model as a "noop" anonymiser. It will not do anything, but
+    it can be used to summarise field information in a consistent manner
+    for models that do not need to be anonymised.
+
+    """
+
+
+@dataclasses.dataclass
+class ModelFieldSummary:
+    """
+    Store info about the field and whether it is anonymisable.
+
+    This is used to generate a summary of the fields on a model, and how
+    they are anonymised / redacted - used to generate the documentation.
+
+    """
+
+    field: models.Field
+    anonymiser: ModelAnonymiser | None = dataclasses.field(init=False)
+
+    def __post_init__(self) -> None:
+        # circ import
+        from .registry import get_model_anonymiser
+
+        self.anonymiser = get_model_anonymiser(self.model)
+
+    @property
+    def model(self) -> type[models.Model]:
+        return self.field.model
+
+    @property
+    def app_label(self) -> str:
+        return self.model._meta.app_label
+
+    @property
+    def model_name(self) -> str:
+        return self.label.split(".")[-1]
+
+    @property
+    def label(self) -> str:
+        return self.model._meta.label
+
+    @property
+    def field_name(self) -> str:
+        return self.field.name
+
+    @property
+    def field_type(self) -> str:
+        return self.field.__class__.__name__
+
+    @property
+    def is_anonymised(self) -> bool:
+        if self.anonymiser:
+            return self.anonymiser.is_field_anonymised(self.field)
+        return False
+
+    @property
+    def is_redacted(self) -> bool:
+        if self.anonymiser:
+            return self.anonymiser.is_field_redacted(self.field)
+        return False
+
+    @property
+    def redaction_strategy(self) -> ModelAnonymiser.FieldRedactionStrategy:
+        if self.anonymiser:
+            return self.anonymiser.field_redaction_strategy(self.field)
+        return ModelAnonymiser.FieldRedactionStrategy.NONE

@@ -1,8 +1,8 @@
-from .models import BaseAnonymiser
-from .registry import register
+from .models import ModelAnonymiser
+from .registry import register_model_anonymiser
 
 
-def register_anonymiser(anonymiser: type[BaseAnonymiser]) -> type[BaseAnonymiser]:
+def register_anonymiser(anonymiser: type[ModelAnonymiser]) -> type[ModelAnonymiser]:
     """Add {model: Anonymiser} to the global registry."""
-    register(anonymiser)
+    register_model_anonymiser(anonymiser)
     return anonymiser

@@ -2,20 +2,25 @@ from django.db.models import F, Value
 from django.db.models.functions import Concat
 
 from anonymiser.decorators import register_anonymiser
-from anonymiser.models import BaseAnonymiser
+from anonymiser.models import AnonymiserBase, ModelAnonymiser, RedacterBase
 
 from .models import User
 
 
 @register_anonymiser
-class UserAnonymiser(BaseAnonymiser):
+class UserAnonymiser(ModelAnonymiser):
     model = User
+    auto_redact = True
+
+    custom_field_redactions = {
+        "first_name": "FIRST_NAME",
+    }
 
     def anonymise_first_name(self, obj: User) -> None:
         obj.first_name = "Anonymous"
 
 
-class BadUserAnonymiser(BaseAnonymiser):
+class BadUserAnonymiser(AnonymiserBase):
     model = User
 
     def anonymise_first_name(self, obj: User) -> None:
@@ -23,7 +28,7 @@ class BadUserAnonymiser(BaseAnonymiser):
         self.first_name = "Anonymous"
 
 
-class UserRedacter(BaseAnonymiser):
+class UserRedacter(RedacterBase):
     model = User
 
     custom_field_redactions = {
