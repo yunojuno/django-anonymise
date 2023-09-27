@@ -133,12 +133,15 @@ class RedacterBase(_ModelBase):
         """
         Return True if the field should be auto-redacted.
 
+        Return False if the class-level auto_redact attr is False.
+
         Currently this includes text fields that are not choices, primary
         keys, unique fields, or in the auto_redact_exclude list.
 
         """
         return (
-            isinstance(field, (models.CharField, models.TextField))
+            self.auto_redact
+            and isinstance(field, (models.CharField, models.TextField))
             and not field.choices
             and not field.primary_key
             and not getattr(field, "unique", False)
