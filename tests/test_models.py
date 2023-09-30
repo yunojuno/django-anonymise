@@ -1,5 +1,6 @@
 from unittest import mock
 
+import freezegun
 import pytest
 from django.db import models
 
@@ -19,8 +20,8 @@ from .models import User
         ("biography", UserAnonymiser.FieldRedactionStrategy.AUTO),
         ("location", UserAnonymiser.FieldRedactionStrategy.AUTO),
         # date / UUID not redacted automatically
-        ("date_of_birth", UserAnonymiser.FieldRedactionStrategy.NONE),
-        ("uuid", UserAnonymiser.FieldRedactionStrategy.NONE),
+        ("date_of_birth", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        ("uuid", UserAnonymiser.FieldRedactionStrategy.AUTO),
     ],
 )
 def test_model_fields_redaction_strategy(
@@ -121,7 +122,7 @@ class TestRedaction:
             (False, "London", "I am a test user"),
         ],
     )
-    def test_redact_queryset__auto_redact(
+    def test_redact_queryset__auto_redact_with_override(
         self,
         user: User,
         user_redacter: UserRedacter,
@@ -154,6 +155,7 @@ class TestRedaction:
         user.refresh_from_db()
         assert user.uuid != uuid
 
+    @freezegun.freeze_time("2021-01-01")
     @mock.patch.object(UserRedacter, "get_model_fields")
     def test_auto_redact(
         self, mock_get_fields: mock.Mock, user_redacter: UserRedacter
@@ -163,6 +165,8 @@ class TestRedaction:
             models.CharField(name="char_field", max_length=255),
             # redact to 400 chars
             models.TextField(name="text_field"),
+            # redact to 400 chars
+            models.DateTimeField(name="date_field"),
             # don't redact (choices)
             models.CharField(name="choices", max_length=255, choices=[("a", "A")]),
             # don't redact (unique)
@@ -176,6 +180,7 @@ class TestRedaction:
         assert user_redacter.auto_field_redactions() == {
             "char_field": 255 * "X",
             "text_field": 400 * "X",
+            "date_field": "2021-01-01",
         }
 
 

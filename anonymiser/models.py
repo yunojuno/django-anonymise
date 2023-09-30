@@ -7,6 +7,8 @@ from typing import Any, Iterator, TypeAlias
 
 from django.db import models
 
+from .settings import AUTO_REDACT_FIELD_FUNCS
+
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
 
@@ -27,6 +29,12 @@ def get_model_fields(model: type[models.Model]) -> list[models.Field]:
     ]
 
 
+def auto_redact(field: type[models.Field]) -> Any:
+    if func := AUTO_REDACT_FIELD_FUNCS.get(field.__class__):
+        return func(field)
+    return None
+
+
 class _ModelBase:
     # Override with the model to be anonymised
     model: type[models.Model]
@@ -36,6 +44,19 @@ class _ModelBase:
         if not self.model:
             raise NotImplementedError("model must be set")
         return get_model_fields(self.model)
+
+    def exclude_from_anonymisation(self, queryset: models.QuerySet) -> models.QuerySet:
+        """
+        Override in subclasses to exclude any objects from anonymisation.
+
+        Canonical example is to exclude certain users from anonymisation
+        - in this case the UserAnonymiser would override this method to
+        exclude e.g. is_staff=True users.
+
+        Default is a noop.
+
+        """
+        return queryset
 
 
 class AnonymiserBase(_ModelBase):
@@ -93,7 +114,7 @@ class AnonymiserBase(_ModelBase):
     def anonymise_queryset(self, queryset: Iterator[models.Model]) -> int:
         """Anonymise all objects in the queryset (and SAVE)."""
         count = 0
-        for obj in queryset:
+        for obj in self.exclude_from_anonymisation(queryset):
             self.anonymise_object(obj)
             obj.save()
             count += 1
@@ -139,13 +160,18 @@ class RedacterBase(_ModelBase):
         keys, unique fields, or in the auto_redact_exclude list.
 
         """
-        return (
-            self.auto_redact
-            and isinstance(field, (models.CharField, models.TextField))
-            and not field.choices
-            and not field.primary_key
-            and not getattr(field, "unique", False)
-            and field.name not in self.auto_redact_exclude
+        if not self.auto_redact:
+            return False
+        if field.name in self.auto_redact_exclude:
+            return False
+        if field.primary_key:
+            return False
+        if field.choices:
+            return False
+        if isinstance(field, models.UUIDField):
+            return self.auto_redact
+        return isinstance(field, tuple(AUTO_REDACT_FIELD_FUNCS.keys())) and not getattr(
+            field, "unique", False
         )
 
     def is_field_redaction_custom(self, field: models.Field) -> bool:
@@ -158,7 +184,7 @@ class RedacterBase(_ModelBase):
             field
         )
 
-    def auto_field_redactions(self) -> dict[str, str]:
+    def auto_field_redactions(self) -> dict[str, object | None]:
         """
         Return a dict of redaction_values for all text fields.
 
@@ -167,16 +193,8 @@ class RedacterBase(_ModelBase):
         unique field.
 
         """
-
-        def _max_length(f: models.Field) -> int:
-            if isinstance(f, models.CharField):
-                return f.max_length
-            if isinstance(f, models.TextField):
-                return 400
-            raise ValueError("Field must be CharField or TextField")
-
         return {
-            f.name: _max_length(f) * "X"
+            f.name: auto_redact(f)
             for f in self.get_model_fields()
             if self.is_field_redaction_auto(f)
         }
