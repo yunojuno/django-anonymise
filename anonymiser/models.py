@@ -164,9 +164,11 @@ class RedacterBase(_ModelBase):
             return False
         if field.name in self.auto_redact_exclude:
             return False
-        if field.primary_key:
+        if field.is_relation:
             return False
-        if field.choices:
+        if getattr(field, "primary_key", False):
+            return False
+        if getattr(field, "choices", []):
             return False
         if isinstance(field, models.UUIDField):
             return self.auto_redact
@@ -176,6 +178,7 @@ class RedacterBase(_ModelBase):
 
     def is_field_redaction_custom(self, field: models.Field) -> bool:
         """Return True if the field has custom redaction."""
+        field.choices
         return field.name in self.custom_field_redactions
 
     def is_field_redacted(self, field: models.Field) -> bool:
