@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import datetime
 from typing import Any, Callable
 
 from django.db import models
@@ -16,12 +17,12 @@ def default_redact_textfield(field: models.TextField) -> str:
     return "X" * 400
 
 
-def default_redact_datefield(field: models.DateField) -> str:
-    return timezone.now().date().isoformat()
+def default_redact_datefield(field: models.DateField) -> datetime.date:
+    return timezone.now().date()
 
 
-def default_redact_datetimefield(field: models.DateTimeField) -> str:
-    return timezone.now().isoformat()
+def default_redact_datetimefield(field: models.DateTimeField) -> datetime.datetime:
+    return timezone.now()
 
 
 def default_redact_jsonfield(field: models.JSONField) -> dict[str, Any]:
@@ -40,10 +41,10 @@ def get_default_field_redacter(
         return default_redact_charfield
     if isinstance(field, models.TextField):
         return default_redact_textfield
-    if isinstance(field, models.DateField):
-        return default_redact_datefield
     if isinstance(field, models.DateTimeField):
         return default_redact_datetimefield
+    if isinstance(field, models.DateField):
+        return default_redact_datefield
     if isinstance(field, models.JSONField):
         return default_redact_jsonfield
     if isinstance(field, models.UUIDField):

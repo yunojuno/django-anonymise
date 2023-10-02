@@ -154,7 +154,7 @@ class TestRedaction:
         assert user_redacter.get_auto_redaction_values() == {
             "char_field": 255 * "X",
             "text_field": 400 * "X",
-            "date_field": "2021-01-01",
+            "date_field": freezegun.api.FakeDate(2021, 1, 1),
         }
 
 
