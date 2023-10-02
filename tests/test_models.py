@@ -77,12 +77,6 @@ class TestAnonymisableUserModel:
             User._meta.get_field("first_name")
         ]
 
-    def test_anonymise_queryset(
-        self, user: User, user_anonymiser: UserAnonymiser
-    ) -> None:
-        assert user_anonymiser.anonymise_queryset(User.objects.none()) == 0
-        assert user_anonymiser.anonymise_queryset(User.objects.all()) == 1
-
 
 def test_bad_anonymiser() -> None:
     with pytest.raises(AttributeError):
@@ -102,6 +96,7 @@ class TestRedaction:
         assert user.first_name == "FIRST_NAME"
         assert user.last_name == "LAST_NAME"
         assert user.email == f"user_{user.id}@example.com"
+        assert user.extra_info == {"foo": "bar"}
 
     def test_redact_queryset_two(
         self,
@@ -114,27 +109,6 @@ class TestRedaction:
         user2.refresh_from_db()
         # confirm that we haven't reused the same uuid for all objects
         assert user.uuid != user2.uuid
-
-    @pytest.mark.parametrize(
-        "override,location,biography",
-        [
-            (True, 255 * "X", 400 * "X"),
-            (False, "London", "I am a test user"),
-        ],
-    )
-    def test_redact_queryset__auto_redact_with_override(
-        self,
-        user: User,
-        user_redacter: UserRedacter,
-        override: bool,
-        location: str,
-        biography: str,
-    ) -> None:
-        user_redacter.redact_queryset(User.objects.all(), auto_redact_override=override)
-        user.refresh_from_db()
-        # auto-redacted fields
-        assert user.location == location
-        assert user.biography == biography
 
     def test_redact_queryset__field_overrides(
         self,
@@ -177,7 +151,7 @@ class TestRedaction:
             models.IntegerField(name="integer_field"),
             models.DateField(name="date_field"),
         ]
-        assert user_redacter.auto_field_redactions() == {
+        assert user_redacter.get_auto_redaction_values() == {
             "char_field": 255 * "X",
             "text_field": 400 * "X",
             "date_field": "2021-01-01",
@@ -194,5 +168,4 @@ def test_model_fields_data() -> None:
     assert mfs.field_type == "CharField"
     assert isinstance(mfs.anonymiser, UserAnonymiser)
     assert mfs.is_anonymised is True
-    assert mfs.is_redacted is True
     assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStrategy.CUSTOM

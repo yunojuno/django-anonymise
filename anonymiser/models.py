@@ -3,11 +3,11 @@ from __future__ import annotations
 import dataclasses
 import logging
 from enum import StrEnum  # 3.11 only
-from typing import Any, Iterator, TypeAlias
+from typing import Any, Callable, TypeAlias
 
 from django.db import models
 
-from .settings import AUTO_REDACT_FIELD_FUNCS
+from .redacters import get_default_field_redacter
 
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
@@ -29,12 +29,6 @@ def get_model_fields(model: type[models.Model]) -> list[models.Field]:
     ]
 
 
-def auto_redact(field: type[models.Field]) -> Any:
-    if func := AUTO_REDACT_FIELD_FUNCS.get(field.__class__):
-        return func(field)
-    return None
-
-
 class _ModelBase:
     # Override with the model to be anonymised
     model: type[models.Model]
@@ -44,19 +38,6 @@ class _ModelBase:
         if not self.model:
             raise NotImplementedError("model must be set")
         return get_model_fields(self.model)
-
-    def exclude_from_anonymisation(self, queryset: models.QuerySet) -> models.QuerySet:
-        """
-        Override in subclasses to exclude any objects from anonymisation.
-
-        Canonical example is to exclude certain users from anonymisation
-        - in this case the UserAnonymiser would override this method to
-        exclude e.g. is_staff=True users.
-
-        Default is a noop.
-
-        """
-        return queryset
 
 
 class AnonymiserBase(_ModelBase):
@@ -111,15 +92,6 @@ class AnonymiserBase(_ModelBase):
             output[field.name] = self.anonymise_field(obj, field)
         self.post_anonymise_object(obj, **output)
 
-    def anonymise_queryset(self, queryset: Iterator[models.Model]) -> int:
-        """Anonymise all objects in the queryset (and SAVE)."""
-        count = 0
-        for obj in self.exclude_from_anonymisation(queryset):
-            self.anonymise_object(obj)
-            obj.save()
-            count += 1
-        return count
-
     def post_anonymise_object(
         self, obj: models.Model, **updates: AnonymisationResult
     ) -> None:
@@ -150,70 +122,80 @@ class RedacterBase(_ModelBase):
         CUSTOM = "CUSTOM"
         NONE = ""
 
-    def is_field_redaction_auto(self, field: models.Field) -> bool:
+    def is_field_redactable(self, field: models.Field) -> bool:
         """
-        Return True if the field should be auto-redacted.
+        Return True if the field can be redacted.
 
-        Return False if the class-level auto_redact attr is False.
-
-        Currently this includes text fields that are not choices, primary
-        keys, unique fields, or in the auto_redact_exclude list.
+        By default primary keys, relations, and choice fields cannot be
+        redacted. Override this method to change this behaviour.
 
         """
-        if not self.auto_redact:
-            return False
-        if field.name in self.auto_redact_exclude:
-            return False
         if field.is_relation:
             return False
         if getattr(field, "primary_key", False):
             return False
-        if getattr(field, "choices", []):
+        if getattr(field, "choices", None):
             return False
-        if isinstance(field, models.UUIDField):
-            return self.auto_redact
-        return isinstance(field, tuple(AUTO_REDACT_FIELD_FUNCS.keys())) and not getattr(
-            field, "unique", False
-        )
+        if getattr(field, "unique", None):
+            return False
+        return True
 
-    def is_field_redaction_custom(self, field: models.Field) -> bool:
-        """Return True if the field has custom redaction."""
-        field.choices
-        return field.name in self.custom_field_redactions
-
-    def is_field_redacted(self, field: models.Field) -> bool:
-        """Return True if the field is redacted."""
-        return self.is_field_redaction_auto(field) or self.is_field_redaction_custom(
-            field
-        )
-
-    def auto_field_redactions(self) -> dict[str, object | None]:
-        """
-        Return a dict of redaction_values for all text fields.
-
-        This is used to "auto-redact" all char/text fields with "X" - if
-        the field does not use choices, and is not a primary key or
-        unique field.
-
-        """
-        return {
-            f.name: auto_redact(f)
-            for f in self.get_model_fields()
-            if self.is_field_redaction_auto(f)
-        }
+    def get_redactable_fields(self) -> list[models.Field]:
+        """Return a list of fields on the model that are redactable."""
+        return [f for f in self.get_model_fields() if self.is_field_redactable(f)]
 
     def field_redaction_strategy(self, field: models.Field) -> FieldRedactionStrategy:
         """Return the FieldRedaction value for a field."""
-        if self.is_field_redaction_custom(field):
+        if field.name in self.custom_field_redactions:
             return self.FieldRedactionStrategy.CUSTOM
-        if self.is_field_redaction_auto(field):
+        if self.get_field_auto_redacter(field):
             return self.FieldRedactionStrategy.AUTO
         return self.FieldRedactionStrategy.NONE
+
+    def get_field_auto_redacter(
+        self, field: models.Field
+    ) -> Callable[[models.Field], Any] | None:
+        """
+        Return the auto redacter function for a field.
+
+        Override this to provide global auto-redaction functions for
+        your models.
+
+        """
+        if not self.auto_redact:
+            return None
+        if field.name in self.auto_redact_exclude:
+            return None
+        # will return None if the field isn't already handled by the
+        # default redacters.
+        return get_default_field_redacter(field)
+
+    def get_auto_redaction_values(self) -> dict[str, Any]:
+        """Return field:value dict for all auto-redactable fields."""
+        # because None is a valid redaction value, we need to do this in
+        # two passes - first get the redacter function, which _can_ be None,
+        # then filter out the None values and call the redacter function
+        # on the field.
+        auto_redactors = {
+            f: self.get_field_auto_redacter(f) for f in self.get_redactable_fields()
+        }
+        return {f.name: func(f) for f, func in auto_redactors.items() if func}
+
+    def get_field_redaction_values(self) -> dict[str, Any]:
+        """
+        Return the redaction values for all field, custom or auto.
+
+        This is a cascading lookup - start with all the auto-redaction
+        values, then overwrite with the custom values.
+
+        """
+        vals = self.get_auto_redaction_values()
+        vals.update(self.custom_field_redactions)
+        return vals
 
     def redact_queryset(
         self,
         queryset: models.QuerySet[models.Model],
-        auto_redact_override: bool | None = None,
         **field_overrides: Any,
     ) -> int:
         """
@@ -233,13 +215,7 @@ class RedacterBase(_ModelBase):
         - field_overrides (values passed in to method)
 
         """
-        redactions: dict[str, Any] = {}
-        auto = (
-            self.auto_redact if auto_redact_override is None else auto_redact_override
-        )
-        if auto:
-            redactions.update(self.auto_field_redactions())
-        redactions.update(self.custom_field_redactions)
+        redactions = self.get_field_redaction_values()
         redactions.update(field_overrides)
         return queryset.update(**redactions)
 
@@ -303,12 +279,6 @@ class ModelFieldSummary:
     def is_anonymised(self) -> bool:
         if self.anonymiser:
             return self.anonymiser.is_field_anonymised(self.field)
-        return False
-
-    @property
-    def is_redacted(self) -> bool:
-        if self.anonymiser:
-            return self.anonymiser.is_field_redacted(self.field)
         return False
 
     @property

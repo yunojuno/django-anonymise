@@ -1,3 +1,6 @@
+from typing import Any, Callable
+
+from django.db import models
 from django.db.models import F, Value
 from django.db.models.functions import Concat
 
@@ -36,3 +39,11 @@ class UserRedacter(RedacterBase):
         "last_name": "LAST_NAME",
         "email": Concat(Value("user_"), F("id"), Value("@example.com")),
     }
+
+    def get_field_auto_redacter(
+        self, field: models.Field
+    ) -> Callable[[models.Field], Any] | None:
+        # Totally contrived example used for testing purposes only
+        if isinstance(field, models.JSONField):
+            return lambda f: {"foo": "bar"}
+        return super().get_field_auto_redacter(field)
