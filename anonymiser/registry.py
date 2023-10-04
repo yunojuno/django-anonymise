@@ -13,12 +13,16 @@ lock = threading.Lock()
 logger = logging.getLogger(__name__)
 
 
+def sort_by_name(models: list[type[models.Model]]) -> list[type[models.Model]]:
+    return sorted(models, key=lambda m: m._meta.label)
+
+
 class Registry(dict):
     def anonymisable_models(self) -> list[type[models.Model]]:
-        return [m for m in self.keys() if self[m]]
+        return sort_by_name([m for m in self.keys() if self[m]])
 
     def non_anonymisable_models(self) -> list[type[models.Model]]:
-        return [m for m in self.keys() if self[m] is None]
+        return sort_by_name([m for m in self.keys() if self[m] is None])
 
     def is_model_anonymisable(self, model: type[models.Model]) -> bool:
         return bool(self[model])

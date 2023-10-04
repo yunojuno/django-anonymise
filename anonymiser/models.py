@@ -85,12 +85,18 @@ class AnonymiserBase(_ModelBase):
         new_value = getattr(obj, field_name)
         return old_value, new_value
 
-    def anonymise_object(self, obj: models.Model) -> None:
-        """Anonymise the model instance (NOT THREAD SAFE)."""
+    def anonymise_object(self, obj: models.Model) -> list[str]:
+        """
+        Anonymise the model instance (NOT THREAD SAFE).
+
+        Returns the list of fields that were anonymised.
+
+        """
         output = {}
         for field in self.get_anonymisable_fields():
             output[field.name] = self.anonymise_field(obj, field)
         self.post_anonymise_object(obj, **output)
+        return list(output.keys())
 
     def post_anonymise_object(
         self, obj: models.Model, **updates: AnonymisationResult
