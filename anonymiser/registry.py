@@ -48,11 +48,6 @@ def get_model_anonymiser(model: type[models.Model]) -> ModelAnonymiser | None:
     return None
 
 
-def get_anonymisable_models() -> list[type[models.Model]]:
-    """Return list of all models that have an anonymiser."""
-    return _registry.anonymisable_models()
-
-
 def get_all_model_fields(
     anonymised_only: bool = False,
 ) -> dict[str, list[ModelFieldSummary]]:

@@ -1,4 +1,9 @@
 **DEMO PURPOSES ONLY**
+
+The following models have no registered anonymiser:
+{% for m in models %}{% if not m.anonymiser %}
+* {{ m.model }}{% endif %}{% endfor %}
+
 ## Model field anonymisation
 App | Model | Field | Type | Anonymise | Redact
 --- | --- | ---   | ---  | --- | ---{% for model,fields in model_fields.items %}{% for field in fields %}
