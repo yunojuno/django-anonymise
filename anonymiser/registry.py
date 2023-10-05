@@ -18,11 +18,8 @@ def sort_by_name(models: list[type[models.Model]]) -> list[type[models.Model]]:
 
 
 class Registry(dict):
-    def anonymisable_models(self) -> list[type[models.Model]]:
+    def get_anonymisable_models(self) -> list[type[models.Model]]:
         return sort_by_name([m for m in self.keys() if self[m]])
-
-    def non_anonymisable_models(self) -> list[type[models.Model]]:
-        return sort_by_name([m for m in self.keys() if self[m] is None])
 
     def is_model_anonymisable(self, model: type[models.Model]) -> bool:
         return bool(self[model])
@@ -46,6 +43,11 @@ def get_model_anonymiser(model: type[models.Model]) -> ModelAnonymiser | None:
     if anonymiser := _registry.get(model):
         return anonymiser()
     return None
+
+
+def get_anonymisable_models() -> list[type[models.Model]]:
+    """Return all models that have an anonymiser."""
+    return _registry.get_anonymisable_models()
 
 
 def get_all_model_fields(
@@ -73,5 +75,5 @@ def get_all_model_fields(
     return dict(output)
 
 
-# Registry object - initialised in init_registry()
-_registry: Registry = Registry()
+# principle access point for the registry
+_registry = Registry()
