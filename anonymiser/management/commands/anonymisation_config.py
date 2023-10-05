@@ -40,9 +40,22 @@ def get_model_anonymisers() -> list[ModelAnonymiserSummary]:
 
 
 class Command(BaseCommand):
+    help = "Display anonymisation configuration"  # noqa: A003
+
+    def add_arguments(self, parser: Any) -> None:
+        parser.add_argument(
+            "-t",
+            "--template",
+            default="anonymisation_config.md",
+            help=(
+                "Template to use for output (defaults to " "anonymisation_config.md)."
+            ),
+        )
+
     def handle(self, *args: Any, **options: Any) -> None:
+        template_name = options["template"]
         out = render_to_string(
-            "anonymiser/display_model_anonymisation.md",
+            f"anonymiser/{template_name}",
             {
                 "model_anonymisers": get_model_anonymisers(),
                 "model_fields": registry.get_all_model_fields(),
