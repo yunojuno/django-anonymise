@@ -39,7 +39,7 @@ jobs:
     strategy:
       matrix:
         python: ["3.11", "3.12"]
-        django: ["32", "40", "41", "42", "50", "main"]
+        django: ["42", "50", "main"]
 
     env:
       TOXENV: py${{ matrix.python }}-django${{ matrix.django }}
