@@ -3,7 +3,7 @@
 Django app for managing / tracking Django model anonymisation.
 
 ## Status
-This is currently used internally only, and has not been publisehd to
+This is currently used internally only, and has not been published to
 PyPI - use with caution.
 
 ## Background
