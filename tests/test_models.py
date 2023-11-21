@@ -14,14 +14,15 @@ from .models import User
 @pytest.mark.parametrize(
     "field_name,strategy",
     [
-        ("first_name", UserAnonymiser.FieldRedactionStrategy.CUSTOM),
+        ("first_name", UserAnonymiser.FieldRedactionStrategy.CUSTOM_REDACTED),
         # non-custom redactions of char fields
-        ("last_name", UserAnonymiser.FieldRedactionStrategy.AUTO),
-        ("biography", UserAnonymiser.FieldRedactionStrategy.AUTO),
-        ("location", UserAnonymiser.FieldRedactionStrategy.AUTO),
-        # date / UUID not redacted automatically
-        ("date_of_birth", UserAnonymiser.FieldRedactionStrategy.AUTO),
-        ("uuid", UserAnonymiser.FieldRedactionStrategy.AUTO),
+        ("last_name", UserAnonymiser.FieldRedactionStrategy.AUTO_REDACTED),
+        ("biography", UserAnonymiser.FieldRedactionStrategy.AUTO_REDACTED),
+        ("location", UserAnonymiser.FieldRedactionStrategy.AUTO_REDACTED),
+        # date / UUID / choices not redacted automatically
+        ("date_of_birth", UserAnonymiser.FieldRedactionStrategy.AUTO_UNREDACTED),
+        ("uuid", UserAnonymiser.FieldRedactionStrategy.AUTO_UNREDACTED),
+        ("state", UserAnonymiser.FieldRedactionStrategy.AUTO_UNREDACTED),
     ],
 )
 def test_model_fields_redaction_strategy(
@@ -168,4 +169,6 @@ def test_model_fields_data() -> None:
     assert mfs.field_type == "CharField"
     assert isinstance(mfs.anonymiser, UserAnonymiser)
     assert mfs.is_anonymised is True
-    assert mfs.redaction_strategy == UserAnonymiser.FieldRedactionStrategy.CUSTOM
+    assert (
+        mfs.redaction_strategy == UserAnonymiser.FieldRedactionStrategy.CUSTOM_REDACTED
+    )

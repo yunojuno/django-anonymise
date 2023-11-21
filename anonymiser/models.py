@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import functools
 from enum import StrEnum  # 3.11 only
 from typing import Any, Callable, TypeAlias
 
@@ -124,8 +125,17 @@ class RedacterBase(_ModelBase):
     custom_field_redactions: dict[str, Any] = {}
 
     class FieldRedactionStrategy(StrEnum):
-        AUTO = "AUTO"
-        CUSTOM = "CUSTOM"
+        # The field was redacted by an auto-redacter,
+        # as it was not covered by a custom redacter.
+        AUTO_REDACTED = "AUTO_REDACTED"
+        # The field was left as-is, untouched, because
+        # it was considered not automatically redactable
+        # and because it has no custom redacter.
+        UNREDACTED = "AUTO_UNREDACTED"
+        # The field was redacted by a custom redacter.
+        CUSTOM_REDACTED = "CUSTOM_REDACTED"
+        # The field is not handled at all because the
+        # model it is on is lacking a ModelAnonymiser.
         NONE = ""
 
     def is_field_redactable(self, field: models.Field) -> bool:
@@ -146,6 +156,7 @@ class RedacterBase(_ModelBase):
             return False
         return True
 
+    @functools.cache
     def get_redactable_fields(self) -> list[models.Field]:
         """Return a list of fields on the model that are redactable."""
         return [f for f in self.get_model_fields() if self.is_field_redactable(f)]
@@ -153,9 +164,18 @@ class RedacterBase(_ModelBase):
     def field_redaction_strategy(self, field: models.Field) -> FieldRedactionStrategy:
         """Return the FieldRedaction value for a field."""
         if field.name in self.custom_field_redactions:
-            return self.FieldRedactionStrategy.CUSTOM
+            return self.FieldRedactionStrategy.CUSTOM_REDACTED
+
+        if field.name in self.auto_redact_exclude:
+            return self.FieldRedactionStrategy.AUTO_UNREDACTED
+
+        if not self.is_field_redactable(field):
+            return self.FieldRedactionStrategy.AUTO_UNREDACTED
+
         if self.get_field_auto_redacter(field):
-            return self.FieldRedactionStrategy.AUTO
+            else:
+                return self.FieldRedactionStrategy.AUTO_UNREDACTED
+
         return self.FieldRedactionStrategy.NONE
 
     def get_field_auto_redacter(
