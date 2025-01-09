@@ -25,7 +25,7 @@ def get_model_anonymisers() -> list[ModelAnonymiserSummary]:
     """
     output = []
     for m in apps.get_models():
-        if m._meta.abstract:
+        if m._meta.abstract or m._meta.proxy:
             continue
         if anonymiser := registry.get_model_anonymiser(m):
             output.append(

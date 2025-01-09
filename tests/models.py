@@ -10,3 +10,14 @@ class User(AbstractUser):
     biography = models.TextField(blank=True)
     date_of_birth = models.DateField(blank=True, null=True)
     extra_info = models.JSONField(default=dict)
+
+
+class ProxyUser(User):
+    """
+    A proxy model for testing the anonymiser.
+
+    Proxy models should not be included in the anonymisation config.
+    """
+
+    class Meta:
+        proxy = True
