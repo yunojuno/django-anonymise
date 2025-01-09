@@ -16,7 +16,10 @@ class ProxyUser(User):
     """
     A proxy model for testing the anonymiser.
 
-    Proxy models should not be included in the anonymisation config.
+    Proxy models should not be included in the anonymisation config;
+    and thus the presence of this model alone is way of ensuring that
+    it does not appear during testing.
+
     """
 
     class Meta:
