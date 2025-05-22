@@ -47,9 +47,7 @@ class Command(BaseCommand):
             "-t",
             "--template",
             default="anonymisation_config.md",
-            help=(
-                "Template to use for output (defaults to " "anonymisation_config.md)."
-            ),
+            help=("Template to use for output (defaults to anonymisation_config.md)."),
         )
 
     def handle(self, *args: Any, **options: Any) -> None:

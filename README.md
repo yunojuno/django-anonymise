@@ -6,6 +6,11 @@ Django app for managing / tracking Django model anonymisation.
 This is currently used internally only, and has not been published to
 PyPI - use with caution.
 
+## Compatibility
+
+- Python: 3.11+
+- Django: 4.2, 5.0, 5.2
+
 ## Background
 We currently have a pattern of each model having its own `anonymise`
 method, and a management command that iterates over each model calling

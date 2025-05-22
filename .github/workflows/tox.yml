@@ -38,11 +38,26 @@ jobs:
 
     strategy:
       matrix:
-        python: ["3.11", "3.12"]
-        django: ["42", "50", "main"]
+        include:
+          # Django 4.2
+          - python: "3.11"
+            django: "42"
+          # Django 5.0
+          - python: "3.11"
+            django: "50"
+          - python: "3.12"
+            django: "50"
+          # Django 5.2
+          - python: "3.11"
+            django: "52"
+          - python: "3.12"
+            django: "52"
+          # Django main
+          - python: "3.12"
+            django: "main"
 
     env:
-      TOXENV: py${{ matrix.python }}-django${{ matrix.django }}
+      TOXENV: django${{ matrix.django }}-py${{ matrix.python }}
 
     steps:
       - name: Check out the repository
