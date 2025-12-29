@@ -8,8 +8,8 @@ PyPI - use with caution.
 
 ## Compatibility
 
-- Python: 3.11+
-- Django: 4.2, 5.0, 5.2
+- Python: 3.12+
+- Django: 5.2, 6.0
 
 ## Background
 We currently have a pattern of each model having its own `anonymise`

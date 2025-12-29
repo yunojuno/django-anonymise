@@ -22,10 +22,10 @@ jobs:
       - name: Check out the repository
         uses: actions/checkout@v4
 
-      - name: Set up Python (3.11)
+      - name: Set up Python (3.12)
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Install and run tox
         run: |
@@ -38,23 +38,8 @@ jobs:
 
     strategy:
       matrix:
-        include:
-          # Django 4.2
-          - python: "3.11"
-            django: "42"
-          # Django 5.0
-          - python: "3.11"
-            django: "50"
-          - python: "3.12"
-            django: "50"
-          # Django 5.2
-          - python: "3.11"
-            django: "52"
-          - python: "3.12"
-            django: "52"
-          # Django main
-          - python: "3.12"
-            django: "main"
+        python: ["3.12", "3.13"]
+        django: ["52", "60", "main"]
 
     env:
       TOXENV: django${{ matrix.django }}-py${{ matrix.python }}
