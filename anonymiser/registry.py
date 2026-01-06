@@ -30,7 +30,7 @@ class Registry(dict):
                 raise ValueError("Anonymiser must have a model attribute set.")
             if model in self:
                 raise ValueError(f"Anonymiser for {model} already registered")
-            logging.debug("Adding anonymiser for %s to registry", model._meta.label)
+            logger.debug("Adding anonymiser for %s to registry", model._meta.label)
             self[model] = anonymiser
 
 
