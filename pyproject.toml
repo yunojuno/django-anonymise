@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-anonymise"
-version = "0.4.0"
+version = "0.4.1"
 description = "Django app used to manage production data anonymisation."
 license = "MIT"
 authors = ["YunoJuno <code@yunojuno.com>"]

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import dataclasses
-import logging
 from enum import StrEnum  # 3.11 only
 from typing import Any, Callable, TypeAlias
 
@@ -11,8 +10,6 @@ from .redacters import get_default_field_redacter
 
 # (old_value, new_value) tuple
 AnonymisationResult: TypeAlias = tuple[Any, Any]
-
-logger = logging.getLogger(__name__)
 
 
 def get_model_fields(model: type[models.Model]) -> list[models.Field]:
